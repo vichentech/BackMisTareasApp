@@ -295,3 +295,160 @@ projects: Array de objetos con { id, pnr, pnm }
 mainTasks: Array de objetos con { id, name }
 vehicles: Array de objetos con { id, name }
 updatedAt: Fecha ISO 8601 de última modificación
+
+
+
+
+---
+
+## 📄 **7. EjemplosUso.txt** (Actualizado)
+
+Añade al final del archivo:
+
+```txt
+===========================================
+DATOS DE USUARIO - TIMESTAMPS
+===========================================
+
+1. OBTENER TIMESTAMPS DE UN USUARIO
+------------------------------------
+GET http://localhost:3000/data/timestamps/Vicente
+
+Respuesta exitosa (usuario con datos):
+{
+  "success": true,
+  "timestamps": {
+    "2024-05": "2024-05-28T10:00:00.000Z",
+    "2024-06": "2024-06-15T14:30:15.123Z",
+    "2024-07": "2024-07-01T09:05:45.987Z"
+  }
+}
+
+Respuesta exitosa (usuario sin datos):
+{
+  "success": true,
+  "message": "Usuario encontrado pero sin datos",
+  "timestamps": {}
+}
+
+Respuesta de error (usuario no encontrado):
+{
+  "success": false,
+  "message": "Usuario 'Vicente' no encontrado",
+  "timestamps": {}
+}
+
+
+2. EJEMPLO CON CURL
+-------------------
+curl http://localhost:3000/data/timestamps/Vicente
+
+
+3. EJEMPLO CON CURL (USUARIO NO EXISTENTE)
+-------------------------------------------
+curl http://localhost:3000/data/timestamps/UsuarioInexistente
+
+Respuesta:
+{
+  "success": false,
+  "message": "Usuario 'UsuarioInexistente' no encontrado",
+  "timestamps": {}
+}
+
+
+4. EJEMPLO EN JAVASCRIPT (FETCH)
+---------------------------------
+const username = 'Vicente';
+
+fetch(`http://localhost:3000/data/timestamps/${username}`)
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Timestamps:', data.timestamps);
+    } else {
+      console.error('Error:', data.message);
+    }
+  })
+  .catch(error => console.error('Error de red:', error));
+
+
+5. EJEMPLO EN JAVASCRIPT (ASYNC/AWAIT)
+---------------------------------------
+async function getTimestamps(username) {
+  try {
+    const response = await fetch(`http://localhost:3000/data/timestamps/${username}`);
+    const data = await response.json();
+    
+    if (response.status === 404) {
+      console.error('Usuario no encontrado');
+      return null;
+    }
+    
+    if (data.success) {
+      return data.timestamps;
+    } else {
+      console.error('Error:', data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error de red:', error);
+    return null;
+  }
+}
+
+// Uso
+const timestamps = await getTimestamps('Vicente');
+console.log(timestamps);
+
+
+6. COMPARAR TIMESTAMPS LOCAL VS SERVIDOR
+-----------------------------------------
+async function syncTimestamps(username, localTimestamps) {
+  const response = await fetch(`http://localhost:3000/data/timestamps/${username}`);
+  const data = await response.json();
+  
+  if (!data.success) {
+    console.error('Error:', data.message);
+    return;
+  }
+  
+  const serverTimestamps = data.timestamps;
+  const monthsToUpdate = [];
+  
+  // Verificar qué meses necesitan actualización
+  for (const [yearMonth, serverTimestamp] of Object.entries(serverTimestamps)) {
+    const localTimestamp = localTimestamps[yearMonth];
+    
+    if (!localTimestamp) {
+      console.log(`Mes ${yearMonth} no existe localmente, necesita descarga`);
+      monthsToUpdate.push(yearMonth);
+    } else if (new Date(serverTimestamp) > new Date(localTimestamp)) {
+      console.log(`Mes ${yearMonth} desactualizado, necesita actualización`);
+      monthsToUpdate.push(yearMonth);
+    } else {
+      console.log(`Mes ${yearMonth} está actualizado`);
+    }
+  }
+  
+  return monthsToUpdate;
+}
+
+// Uso
+const localTimestamps = {
+  "2024-05": "2024-05-20T08:00:00.000Z",
+  "2024-06": "2024-06-15T14:30:15.123Z"
+};
+
+const monthsToUpdate = await syncTimestamps('Vicente', localTimestamps);
+console.log('Meses a actualizar:', monthsToUpdate);
+
+
+NOTAS IMPORTANTES:
+------------------
+- El endpoint es público (no requiere autenticación)
+- Solo devuelve yearMonth y updatedAt, no el contenido completo
+- Es muy eficiente para sincronización
+- Devuelve 404 si el usuario no existe
+- Devuelve 200 con timestamps vacío si el usuario existe pero no tiene datos
+- Los timestamps están en formato ISO 8601
+- Las claves del objeto timestamps son yearMonth en formato "YYYY-MM"

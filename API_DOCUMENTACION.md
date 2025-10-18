@@ -125,3 +125,17 @@ Respuesta de Error (400 Bad Request):
   ],
   "updatedAt": "2024-08-15T12:30:00.000Z"
 }
+
+---
+
+## Endpoints de Datos de Usuario
+
+### GET /data/timestamps/:username
+**Propósito:** Obtener los timestamps de todos los meses de un usuario específico.
+
+**Parámetros de URL:**
+- `username` (string, requerido): Nombre de usuario
+
+**Autenticación:** No requerida (público)
+
+**Ejemplo de petición:**

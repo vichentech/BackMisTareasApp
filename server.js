@@ -8,6 +8,7 @@ const syncRoutes = require('./routes/syncRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const configRoutes = require('./routes/configRoutes');
+const dataRoutes = require('./routes/dataRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
 const syncController = require('./controllers/syncController');
 
@@ -72,6 +73,7 @@ const authLimiter = rateLimit({
 
 app.use('/sync/', limiter);
 app.use('/auth/', authLimiter);
+app.use('/data/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -124,6 +126,12 @@ app.use('/users', userRoutes);
  */
 app.use('/config', configRoutes);
 
+/**
+ * Rutas de datos
+ * GET /data/timestamps/:username - Obtener timestamps de un usuario
+ */
+app.use('/data', dataRoutes);
+
 // Ruta 404
 app.use((req, res) => {
   res.status(404).json({ 
@@ -144,7 +152,8 @@ app.use((req, res) => {
       'GET /users',
       'GET /config/master-lists',
       'POST /config/master-lists',
-      'POST /config/init-master-lists'
+      'POST /config/init-master-lists',
+      'GET /data/timestamps/:username'
     ]
   });
 });
@@ -178,6 +187,7 @@ const server = app.listen(PORT, () => {
 ║   • GET  /config/master-lists              ║
 ║   • POST /config/master-lists              ║
 ║   • POST /config/init-master-lists         ║
+║   • GET  /data/timestamps/:username        ║
 ╚════════════════════════════════════════════╝
   `);
 });
