@@ -1,19 +1,4 @@
-# Configuración del servidor
-PORT=3000
-NODE_ENV=development
-
-# CORS - Orígenes permitidos (separados por comas)
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-
-# Configuración de MongoDB
-MONGO_CONNECTION_STRING=mongodb://localhost:27017
-MONGO_USERNAME=your_username
-MONGO_PASSWORD=your_password
-MONGO_TIMEOUT=10000
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 /**
  * Modelo de Usuario para MongoDB
@@ -176,11 +161,11 @@ class User {
 
       const updateResult = await collection.updateOne(
         { username },
-        { 
-          $set: { 
+        {
+          $set: {
             passwordHash: newPasswordHash,
             updatedAt: new Date()
-          } 
+          }
         }
       );
 

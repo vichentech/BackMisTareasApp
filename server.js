@@ -5,6 +5,9 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const syncRoutes = require('./routes/syncRoutes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const configRoutes = require('./routes/configRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
 const syncController = require('./controllers/syncController');
 
@@ -57,7 +60,18 @@ const limiter = rateLimit({
   skip: (req) => isDevelopment && (req.ip === '::1' || req.ip === '127.0.0.1')
 });
 
+// Rate limiting más estricto para autenticación
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: isDevelopment ? 100 : 20, // 20 intentos en producción
+  message: 'Demasiados intentos de autenticación, por favor intenta más tarde.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => isDevelopment && (req.ip === '::1' || req.ip === '127.0.0.1')
+});
+
 app.use('/sync/', limiter);
+app.use('/auth/', authLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -85,6 +99,31 @@ app.get('/status', syncController.getStatus);
  */
 app.use('/sync', syncRoutes);
 
+/**
+ * Rutas de autenticación
+ * POST /auth/login - Login de usuario
+ * POST /auth/login-admin - Login de administrador
+ * POST /auth/create-user - Crear usuario
+ * POST /auth/change-password - Cambiar contraseña
+ * POST /auth/admin-change-password - Admin cambia contraseña
+ * POST /auth/init-db - Inicializar base de datos
+ */
+app.use('/auth', authRoutes);
+
+/**
+ * Rutas de usuarios
+ * GET /users - Obtener lista de usuarios
+ */
+app.use('/users', userRoutes);
+
+/**
+ * Rutas de configuración
+ * GET /config/master-lists - Obtener listas maestras
+ * POST /config/master-lists - Actualizar listas maestras
+ * POST /config/init-master-lists - Inicializar listas maestras
+ */
+app.use('/config', configRoutes);
+
 // Ruta 404
 app.use((req, res) => {
   res.status(404).json({ 
@@ -95,7 +134,17 @@ app.use((req, res) => {
       'GET /status',
       'POST /sync/check',
       'POST /sync/push',
-      'POST /sync/init-indexes'
+      'POST /sync/init-indexes',
+      'POST /auth/login',
+      'POST /auth/login-admin',
+      'POST /auth/create-user',
+      'POST /auth/change-password',
+      'POST /auth/admin-change-password',
+      'POST /auth/init-db',
+      'GET /users',
+      'GET /config/master-lists',
+      'POST /config/master-lists',
+      'POST /config/init-master-lists'
     ]
   });
 });
@@ -119,6 +168,16 @@ const server = app.listen(PORT, () => {
 ║   • POST /sync/check                       ║
 ║   • POST /sync/push                        ║
 ║   • POST /sync/init-indexes                ║
+║   • POST /auth/login                       ║
+║   • POST /auth/login-admin                 ║
+║   • POST /auth/create-user                 ║
+║   • POST /auth/change-password             ║
+║   • POST /auth/admin-change-password       ║
+║   • POST /auth/init-db                     ║
+║   • GET  /users                            ║
+║   • GET  /config/master-lists              ║
+║   • POST /config/master-lists              ║
+║   • POST /config/init-master-lists         ║
 ╚════════════════════════════════════════════╝
   `);
 });

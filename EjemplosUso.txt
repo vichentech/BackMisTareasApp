@@ -1,0 +1,297 @@
+
+Crear primer usuario administrador:
+node scripts/createAdminUser.js admin mipassword123
+
+
+Login de usuario:
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"usuario1","password":"password123"}'
+
+
+Crear nuevo usuario:
+curl -X POST http://localhost:3000/auth/create-user \
+  -H "Content-Type: application/json" \
+  -d '{"username":"nuevouser","password":"pass123"}'
+
+
+Obtener lista de usuarios:
+curl http://localhost:3000/users
+
+
+
+---
+
+## 📄 **7. EjemplosUso.txt** (Crear/Actualizar)
+
+```txt
+===========================================
+EJEMPLOS DE USO - API DE AUTENTICACIÓN
+===========================================
+
+1. CAMBIAR CONTRASEÑA DEL PROPIO USUARIO
+-----------------------------------------
+POST http://localhost:3000/auth/change-password
+Content-Type: application/json
+
+{
+  "username": "usuario1",
+  "currentPassword": "password123",
+  "newPassword": "newpassword456"
+}
+
+Respuesta exitosa:
+{
+  "success": true,
+  "message": "Contraseña actualizada correctamente."
+}
+
+Respuesta error (contraseña actual incorrecta):
+{
+  "success": false,
+  "message": "La contraseña actual es incorrecta."
+}
+
+
+2. ADMIN CAMBIA CONTRASEÑA DE OTRO USUARIO
+-------------------------------------------
+POST http://localhost:3000/auth/admin-change-password
+Content-Type: application/json
+
+{
+  "targetUsername": "usuario1",
+  "newPassword": "resetpassword789"
+}
+
+Respuesta exitosa:
+{
+  "success": true,
+  "message": "Contraseña del usuario actualizada por el administrador."
+}
+
+Respuesta error (usuario no encontrado):
+{
+  "success": false,
+  "message": "Usuario no encontrado."
+}
+
+
+3. EJEMPLO CON CURL - CAMBIAR CONTRASEÑA
+-----------------------------------------
+curl -X POST http://localhost:3000/auth/change-password \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","currentPassword":"admin","newPassword":"newadmin123"}'
+
+
+4. EJEMPLO CON CURL - ADMIN CAMBIA CONTRASEÑA
+----------------------------------------------
+curl -X POST http://localhost:3000/auth/admin-change-password \
+  -H "Content-Type: application/json" \
+  -d '{"targetUsername":"usuario1","newPassword":"reset123"}'
+
+
+NOTAS IMPORTANTES:
+------------------
+- El endpoint /auth/change-password requiere la contraseña actual para mayor seguridad
+- El endpoint /auth/admin-change-password NO requiere la contraseña actual del usuario objetivo
+- La nueva contraseña debe ser diferente a la actual
+- La nueva contraseña debe cumplir los requisitos: mínimo 3 caracteres, máximo 100
+- En producción, deberías implementar autenticación con tokens para verificar que el usuario que hace la petición es quien dice ser
+
+
+
+
+---
+
+
+---
+
+## 📄 **11. EjemplosUso.txt** (Actualizado)
+
+Reemplaza la sección de listas maestras con esto:
+
+```txt
+===========================================
+LISTAS MAESTRAS - CONFIGURACIÓN
+===========================================
+
+1. OBTENER LISTAS MAESTRAS (PÚBLICO)
+-------------------------------------
+GET http://localhost:3000/config/master-lists
+
+Respuesta:
+{
+  "projects": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "pnr": "PROJ-001",
+      "pnm": "Proyecto Principal"
+    },
+    {
+      "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "pnr": "PROJ-002",
+      "pnm": "Proyecto Secundario"
+    }
+  ],
+  "mainTasks": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "name": "Mantenimiento General"
+    },
+    {
+      "id": "8f14e45f-ceea-467a-9538-1c83e6c52e7a",
+      "name": "Revisión de Problemas"
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "9b2d5b4e-3f8a-4c7d-9e1f-2a3b4c5d6e7f",
+      "name": "Furgoneta-01"
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Camión-01"
+    }
+  ],
+  "updatedAt": "2024-08-15T12:30:00.000Z"
+}
+
+
+2. ACTUALIZAR LISTAS MAESTRAS (SOLO ADMIN)
+-------------------------------------------
+POST http://localhost:3000/config/master-lists
+Authorization: Basic YWRtaW46cGFzc3dvcmQ=
+Content-Type: application/json
+
+{
+  "projects": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "pnr": "PROJ-001",
+      "pnm": "Proyecto Principal"
+    },
+    {
+      "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "pnr": "PROJ-002",
+      "pnm": "Proyecto Secundario"
+    }
+  ],
+  "mainTasks": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "name": "Mantenimiento General"
+    },
+    {
+      "id": "8f14e45f-ceea-467a-9538-1c83e6c52e7a",
+      "name": "Desarrollo"
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "9b2d5b4e-3f8a-4c7d-9e1f-2a3b4c5d6e7f",
+      "name": "Furgoneta-01"
+    }
+  ]
+}
+
+Respuesta exitosa:
+{
+  "success": true,
+  "message": "Listas maestras actualizadas correctamente",
+  "data": {
+    "projects": [...],
+    "mainTasks": [...],
+    "vehicles": [...],
+    "updatedAt": "2024-08-15T12:35:00.000Z"
+  }
+}
+
+
+3. INICIALIZAR LISTAS MAESTRAS
+-------------------------------
+POST http://localhost:3000/config/init-master-lists
+
+Respuesta:
+{
+  "success": true,
+  "message": "Listas maestras inicializadas correctamente",
+  "data": {
+    "projects": [...],
+    "mainTasks": [...],
+    "vehicles": [...],
+    "updatedAt": "2024-08-15T10:00:00.000Z"
+  }
+}
+
+
+4. EJEMPLO CON CURL - OBTENER LISTAS
+-------------------------------------
+curl http://localhost:3000/config/master-lists
+
+
+5. EJEMPLO CON CURL - ACTUALIZAR LISTAS (CON AUTENTICACIÓN)
+------------------------------------------------------------
+# Primero, crear el token de autenticación:
+# echo -n "admin:password" | base64
+# Resultado: YWRtaW46cGFzc3dvcmQ=
+
+curl -X POST http://localhost:3000/config/master-lists \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ=" \
+  -d '{
+    "projects": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "pnr": "PROJ-001",
+        "pnm": "Proyecto Principal"
+      }
+    ],
+    "mainTasks": [
+      {
+        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "name": "Mantenimiento General"
+      }
+    ],
+    "vehicles": [
+      {
+        "id": "9b2d5b4e-3f8a-4c7d-9e1f-2a3b4c5d6e7f",
+        "name": "Furgoneta-01"
+      }
+    ]
+  }'
+
+
+6. EJEMPLO CON CURL - INICIALIZAR
+----------------------------------
+curl -X POST http://localhost:3000/config/init-master-lists
+
+
+7. GENERAR TOKEN DE AUTENTICACIÓN BASIC
+----------------------------------------
+# En Linux/Mac:
+echo -n "admin:tu_password" | base64
+
+# En Windows PowerShell:
+[Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:tu_password"))
+
+# Usar el resultado en el header:
+# Authorization: Basic <resultado_base64>
+
+
+NOTAS IMPORTANTES:
+------------------
+- GET /config/master-lists es público (no requiere autenticación)
+- POST /config/master-lists requiere autenticación Basic Auth con rol admin
+- El campo updatedAt se actualiza automáticamente al modificar las listas
+- Los IDs son UUIDs únicos generados por el servidor
+- Los datos se limpian automáticamente (trim de espacios)
+- Se validan IDs únicos y campos requeridos
+- Los PNRs de proyectos deben ser únicos
+- El frontend debe comparar updatedAt para decidir si actualizar
+
+ESTRUCTURA DE DATOS:
+--------------------
+projects: Array de objetos con { id, pnr, pnm }
+mainTasks: Array de objetos con { id, name }
+vehicles: Array de objetos con { id, name }
+updatedAt: Fecha ISO 8601 de última modificación
