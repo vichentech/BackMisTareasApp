@@ -1,90 +1,83 @@
+const { MongoClient } = require('mongodb');
 const UserData = require('../models/userData');
+const User = require('../models/User');
 
 /**
  * Servicio de Datos de Usuario
- * Contiene la lógica de negocio para gestión de datos de usuario
+ * Contiene la lógica de negocio para operaciones con datos de usuario
  */
 class DataService {
   /**
-   * Obtiene los timestamps de un usuario
-   * @param {string} username - Nombre de usuario
-   * @param {string} dbName - Nombre de la base de datos (opcional)
-   * @param {string} collectionName - Nombre de la colección (opcional)
-   * @returns {object} Resultado con timestamps
+   * Obtiene los timestamps de todos los meses de un usuario
    */
   async getTimestamps(username, dbName = null, collectionName = null) {
     try {
-      // Validar username
-      if (!username || typeof username !== 'string' || username.trim().length === 0) {
-        return {
-          success: false,
-          message: 'El username es requerido y debe ser válido',
-          statusCode: 400
-        };
-      }
-
       // Usar valores por defecto si no se proporcionan
-      const finalDbName = dbName || process.env.MONGO_DB_NAME || 'timeTrackingDB';
-      const finalCollectionName = collectionName || process.env.MONGO_COLLECTION_NAME || 'monthlyData';
+      const targetDb = dbName || process.env.MONGO_DB_NAME || 'timeTrackingDB';
+      const targetCollection = collectionName || process.env.MONGO_COLLECTION_NAME || 'monthlyData';
 
-      console.log(`[DataService] Obteniendo timestamps para: ${username}`);
-      console.log(`[DataService] DB: ${finalDbName}, Collection: ${finalCollectionName}`);
+      console.log(`[DataService] Obteniendo timestamps para usuario: ${username}`);
+      console.log(`[DataService] DB: ${targetDb}, Collection: ${targetCollection}`);
 
-      // Obtener timestamps
-      const result = await UserData.getTimestamps(username.trim(), finalDbName, finalCollectionName);
+      // Obtener todos los documentos del usuario
+      const documents = await UserData.findByUsername(username, targetDb, targetCollection);
 
-      // Si no se encontraron datos, verificar si el usuario existe
-      if (!result.found) {
-        console.log(`[DataService] No se encontraron datos para: ${username}`);
-        
-        // Verificar si el usuario existe en la base de datos de autenticación
-        const userExists = await this.checkUserExists(username.trim());
-        
-        if (!userExists) {
-          console.log(`[DataService] Usuario no existe en authDB: ${username}`);
-          return {
-            success: false,
-            message: `Usuario '${username}' no encontrado`,
-            statusCode: 404
-          };
-        }
-
-        // El usuario existe pero no tiene datos
-        console.log(`[DataService] Usuario existe pero sin datos: ${username}`);
+      if (!documents || documents.length === 0) {
+        console.log(`[DataService] No se encontraron documentos para el usuario: ${username}`);
         return {
           success: true,
-          message: 'Usuario encontrado pero sin datos',
+          message: 'No se encontraron datos para este usuario',
           timestamps: {},
           statusCode: 200
         };
       }
 
-      console.log(`[DataService] Timestamps encontrados: ${Object.keys(result.timestamps).length}`);
+      // Construir objeto de timestamps
+      const timestamps = {};
+      documents.forEach(doc => {
+        if (doc.monthKey && doc.lastModified) {
+          timestamps[doc.monthKey] = doc.lastModified;
+        }
+      });
+
+      console.log(`[DataService] Timestamps encontrados: ${Object.keys(timestamps).length}`);
+
       return {
         success: true,
-        timestamps: result.timestamps,
+        message: 'Timestamps obtenidos correctamente',
+        timestamps,
         statusCode: 200
       };
     } catch (error) {
-      console.error('[DataService] Error en getTimestamps:', error);
-      throw error;
+      console.error('[DataService] Error al obtener timestamps:', error);
+      return {
+        success: false,
+        message: 'Error al obtener timestamps',
+        timestamps: {},
+        statusCode: 500
+      };
     }
   }
 
   /**
-   * Verifica si un usuario existe en la base de datos de autenticación
-   * @param {string} username - Nombre de usuario
-   * @returns {boolean} true si el usuario existe
+   * Obtiene la lista de todos los usuarios
    */
-  async checkUserExists(username) {
+  async getAllUsers() {
     try {
-      const User = require('../models/User');
-      const user = await User.findByUsername(username);
-      return user !== null;
+      console.log('[DataService] Obteniendo lista de usuarios...');
+
+      // Obtener todos los usernames de la base de datos de autenticación
+      const usernames = await User.getAllUsernames();
+
+      console.log(`[DataService] Usuarios encontrados: ${usernames.length}`);
+
+      return {
+        success: true,
+        users: usernames
+      };
     } catch (error) {
-      console.error('[DataService] Error al verificar usuario:', error);
-      // Si hay error, asumimos que el usuario no existe
-      return false;
+      console.error('[DataService] Error al obtener usuarios:', error);
+      throw error;
     }
   }
 }

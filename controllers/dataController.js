@@ -47,6 +47,31 @@ class DataController {
       next(error);
     }
   }
+
+  /**
+   * GET /data/users
+   * Obtener lista de todos los usuarios
+   */
+  async getUsers(req, res, next) {
+    try {
+      console.log('\n[USERS] Obteniendo lista de usuarios...');
+
+      // Obtener lista de usuarios
+      const result = await dataService.getAllUsers();
+
+      console.log(`[USERS] Resultado: ${result.success ? 'OK' : 'ERROR'}`);
+      console.log(`[USERS] Total usuarios: ${result.users ? result.users.length : 0}\n`);
+
+      // Responder con la lista de usuarios
+      return res.status(200).json({
+        success: true,
+        users: result.users || []
+      });
+    } catch (error) {
+      console.error('[USERS] Error:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = new DataController();
