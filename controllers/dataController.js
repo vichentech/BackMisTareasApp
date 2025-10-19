@@ -8,10 +8,19 @@ class DataController {
   /**
    * GET /data/timestamps/:username
    * Obtener timestamps de todos los meses de un usuario
+   * 
+   * Query params opcionales:
+   * - db: Nombre de la base de datos
+   * - collection: Nombre de la colección
    */
   async getTimestamps(req, res, next) {
     try {
       const { username } = req.params;
+      const { db, collection } = req.query;
+
+      console.log(`\n[TIMESTAMPS] Usuario: ${username}`);
+      if (db) console.log(`[TIMESTAMPS] DB: ${db}`);
+      if (collection) console.log(`[TIMESTAMPS] Collection: ${collection}`);
 
       // Validar que se proporcionó el username
       if (!username) {
@@ -22,7 +31,10 @@ class DataController {
       }
 
       // Obtener timestamps
-      const result = await dataService.getTimestamps(username);
+      const result = await dataService.getTimestamps(username, db, collection);
+
+      console.log(`[TIMESTAMPS] Resultado: ${result.success ? 'OK' : 'ERROR'}`);
+      console.log(`[TIMESTAMPS] Timestamps: ${Object.keys(result.timestamps || {}).length}\n`);
 
       // Responder según el resultado
       return res.status(result.statusCode || 200).json({
@@ -31,7 +43,7 @@ class DataController {
         timestamps: result.timestamps || {}
       });
     } catch (error) {
-      console.error('Error en getTimestamps:', error);
+      console.error('[TIMESTAMPS] Error:', error);
       next(error);
     }
   }

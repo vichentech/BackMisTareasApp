@@ -136,6 +136,12 @@ Respuesta de Error (400 Bad Request):
 **Parámetros de URL:**
 - `username` (string, requerido): Nombre de usuario
 
+**Query Parameters (opcionales):**
+- `db` (string): Nombre de la base de datos. Por defecto: `timeTrackingDB`
+- `collection` (string): Nombre de la colección. Por defecto: `monthlyData`
+
 **Autenticación:** No requerida (público)
 
-**Ejemplo de petición:**
+**Ejemplos de petición:**
+
+1. **Usando valores por defecto:**

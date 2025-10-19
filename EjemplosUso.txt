@@ -452,3 +452,173 @@ NOTAS IMPORTANTES:
 - Devuelve 200 con timestamps vacío si el usuario existe pero no tiene datos
 - Los timestamps están en formato ISO 8601
 - Las claves del objeto timestamps son yearMonth en formato "YYYY-MM"
+
+
+
+---
+
+## 📄 **6. EjemplosUso.txt** (Actualizado)
+
+```txt
+===========================================
+DATOS DE USUARIO - TIMESTAMPS
+===========================================
+
+1. OBTENER TIMESTAMPS DE UN USUARIO (valores por defecto)
+----------------------------------------------------------
+GET http://localhost:3000/data/timestamps/Vicente
+
+Respuesta exitosa (usuario con datos):
+{
+  "success": true,
+  "timestamps": {
+    "2024-05": "2024-05-28T10:00:00.000Z",
+    "2024-06": "2024-06-15T14:30:15.123Z",
+    "2024-07": "2024-07-01T09:05:45.987Z"
+  }
+}
+
+
+2. OBTENER TIMESTAMPS ESPECIFICANDO DB Y COLECCIÓN
+---------------------------------------------------
+GET http://localhost:3000/data/timestamps/Vicente?db=timeTrackingDB&collection=monthlyData
+
+Respuesta exitosa:
+{
+  "success": true,
+  "timestamps": {
+    "2024-05": "2024-05-28T10:00:00.000Z",
+    "2024-06": "2024-06-15T14:30:15.123Z"
+  }
+}
+
+
+3. EJEMPLO CON CURL (valores por defecto)
+------------------------------------------
+curl http://localhost:3000/data/timestamps/Vicente
+
+
+4. EJEMPLO CON CURL (especificando DB y colección)
+---------------------------------------------------
+curl "http://localhost:3000/data/timestamps/Vicente?db=timeTrackingDB&collection=monthlyData"
+
+
+5. EJEMPLO EN JAVASCRIPT (FETCH)
+---------------------------------
+const username = 'Vicente';
+const db = 'timeTrackingDB';
+const collection = 'monthlyData';
+
+// Con query params
+fetch(`http://localhost:3000/data/timestamps/${username}?db=${db}&collection=${collection}`)
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Timestamps:', data.timestamps);
+    } else {
+      console.error('Error:', data.message);
+    }
+  })
+  .catch(error => console.error('Error de red:', error));
+
+
+6. EJEMPLO EN JAVASCRIPT (ASYNC/AWAIT)
+---------------------------------------
+async function getTimestamps(username, db = null, collection = null) {
+  try {
+    let url = `http://localhost:3000/data/timestamps/${username}`;
+    
+    // Añadir query params si se proporcionan
+    const params = new URLSearchParams();
+    if (db) params.append('db', db);
+    if (collection) params.append('collection', collection);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (response.status === 404) {
+      console.error('Usuario no encontrado');
+      return null;
+    }
+    
+    if (data.success) {
+      return data.timestamps;
+    } else {
+      console.error('Error:', data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error de red:', error);
+    return null;
+  }
+}
+
+// Uso con valores por defecto
+const timestamps1 = await getTimestamps('Vicente');
+
+// Uso especificando DB y colección
+const timestamps2 = await getTimestamps('Vicente', 'timeTrackingDB', 'monthlyData');
+
+
+7. COMPARAR TIMESTAMPS LOCAL VS SERVIDOR
+-----------------------------------------
+async function syncTimestamps(username, localTimestamps, db, collection) {
+  const url = `http://localhost:3000/data/timestamps/${username}?db=${db}&collection=${collection}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  if (!data.success) {
+    console.error('Error:', data.message);
+    return;
+  }
+  
+  const serverTimestamps = data.timestamps;
+  const monthsToUpdate = [];
+  
+  // Verificar qué meses necesitan actualización
+  for (const [yearMonth, serverTimestamp] of Object.entries(serverTimestamps)) {
+    const localTimestamp = localTimestamps[yearMonth];
+    
+    if (!localTimestamp) {
+      console.log(`Mes ${yearMonth} no existe localmente, necesita descarga`);
+      monthsToUpdate.push(yearMonth);
+    } else if (new Date(serverTimestamp) > new Date(localTimestamp)) {
+      console.log(`Mes ${yearMonth} desactualizado, necesita actualización`);
+      monthsToUpdate.push(yearMonth);
+    } else {
+      console.log(`Mes ${yearMonth} está actualizado`);
+    }
+  }
+  
+  return monthsToUpdate;
+}
+
+// Uso
+const localTimestamps = {
+  "2024-05": "2024-05-20T08:00:00.000Z",
+  "2024-06": "2024-06-15T14:30:15.123Z"
+};
+
+const monthsToUpdate = await syncTimestamps(
+  'Vicente', 
+  localTimestamps,
+  'timeTrackingDB',
+  'monthlyData'
+);
+console.log('Meses a actualizar:', monthsToUpdate);
+
+
+NOTAS IMPORTANTES:
+------------------
+- El endpoint acepta query params opcionales: db y collection
+- Si no se especifican, usa los valores de las variables de entorno
+- Si las variables de entorno no existen, usa valores por defecto
+- Los valores por defecto son: db=timeTrackingDB, collection=monthlyData
+- El endpoint busca en la misma DB y colección que usa el sistema de sincronización
+- Devuelve 404 si el usuario no existe
+- Devuelve 200 con timestamps vacío si el usuario existe pero no tiene datos
+- Los timestamps están en formato ISO 8601

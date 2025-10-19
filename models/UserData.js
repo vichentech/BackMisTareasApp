@@ -7,8 +7,6 @@ const { MongoClient } = require('mongodb');
 class UserData {
   constructor() {
     this.connectionString = process.env.MONGO_CONNECTION_STRING;
-    this.dbName = process.env.MONGO_DB_NAME || 'timeTrackingDB';
-    this.collectionName = process.env.MONGO_COLLECTION_NAME || 'monthlyData';
   }
 
   /**
@@ -53,21 +51,27 @@ class UserData {
   /**
    * Obtiene la colección de datos de usuario
    */
-  async getCollection() {
+  async getCollection(dbName, collectionName) {
     const client = await this.getConnection();
-    const db = client.db(this.dbName);
-    return { collection: db.collection(this.collectionName), client };
+    const db = client.db(dbName);
+    return { collection: db.collection(collectionName), client };
   }
 
   /**
    * Obtiene los timestamps de todos los meses de un usuario
    * @param {string} username - Nombre de usuario
+   * @param {string} dbName - Nombre de la base de datos
+   * @param {string} collectionName - Nombre de la colección
    * @returns {object} Objeto con yearMonth como clave y updatedAt como valor
    */
-  async getTimestamps(username) {
+  async getTimestamps(username, dbName, collectionName) {
     let client;
     try {
-      const result = await this.getCollection();
+      console.log(`[UserData] Buscando timestamps para: ${username}`);
+      console.log(`[UserData] Base de datos: ${dbName}`);
+      console.log(`[UserData] Colección: ${collectionName}`);
+
+      const result = await this.getCollection(dbName, collectionName);
       client = result.client;
       const collection = result.collection;
 
@@ -79,6 +83,8 @@ class UserData {
         )
         .toArray();
 
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
       // Construir el objeto de timestamps
       const timestamps = {};
       documents.forEach(doc => {
@@ -87,13 +93,15 @@ class UserData {
         }
       });
 
+      console.log(`[UserData] Timestamps construidos: ${Object.keys(timestamps).length}`);
+
       return {
         success: true,
         found: documents.length > 0,
         timestamps
       };
     } catch (error) {
-      console.error('Error al obtener timestamps:', error);
+      console.error('[UserData] Error al obtener timestamps:', error);
       throw error;
     } finally {
       if (client) await client.close();
@@ -103,19 +111,21 @@ class UserData {
   /**
    * Verifica si un usuario existe en la base de datos
    * @param {string} username - Nombre de usuario
+   * @param {string} dbName - Nombre de la base de datos
+   * @param {string} collectionName - Nombre de la colección
    * @returns {boolean} true si el usuario existe
    */
-  async userExists(username) {
+  async userExists(username, dbName, collectionName) {
     let client;
     try {
-      const result = await this.getCollection();
+      const result = await this.getCollection(dbName, collectionName);
       client = result.client;
       const collection = result.collection;
 
       const count = await collection.countDocuments({ username: username }, { limit: 1 });
       return count > 0;
     } catch (error) {
-      console.error('Error al verificar usuario:', error);
+      console.error('[UserData] Error al verificar usuario:', error);
       throw error;
     } finally {
       if (client) await client.close();
