@@ -33,17 +33,120 @@ class DataController {
       // Obtener timestamps
       const result = await dataService.getTimestamps(username, db, collection);
 
-      console.log(`[TIMESTAMPS] Resultado: ${result.success ? 'OK' : 'ERROR'}`);
+      console.log(`[TIMESTAMPS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
       console.log(`[TIMESTAMPS] Timestamps: ${Object.keys(result.timestamps || {}).length}\n`);
 
       // Responder según el resultado
       return res.status(result.statusCode || 200).json({
         success: result.success,
-        message: result.message,
         timestamps: result.timestamps || {}
       });
     } catch (error) {
       console.error('[TIMESTAMPS] Error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * POST /data/months/:username
+   * Obtener datos completos de meses específicos de un usuario
+   * 
+   * Body: { "months": ["2024-05", "2024-06"] }
+   */
+  async getMonthsData(req, res, next) {
+    try {
+      const { username } = req.params;
+      const { months } = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[GET_MONTHS] Usuario: ${username}`);
+      console.log(`[GET_MONTHS] Meses solicitados: ${months ? months.join(', ') : 'ninguno'}`);
+
+      // Validar que se proporcionó el username
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: 'El parámetro username es requerido'
+        });
+      }
+
+      // Validar que se proporcionó el array de meses
+      if (!months) {
+        return res.status(400).json({
+          success: false,
+          message: 'El campo months es requerido en el body'
+        });
+      }
+
+      // Obtener datos de meses
+      const result = await dataService.getMonthsData(username, months, db, collection);
+
+      console.log(`[GET_MONTHS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      console.log(`[GET_MONTHS] Meses obtenidos: ${result.data ? result.data.length : 0}\n`);
+
+      // Responder según el resultado
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        message: result.message,
+        data: result.data || []
+      });
+    } catch (error) {
+      console.error('[GET_MONTHS] Error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /data/months/:username
+   * Actualizar datos completos de meses específicos de un usuario
+   * 
+   * Body: { "data": [{ username, yearMonth, updatedAt, monthData }] }
+   */
+  async updateMonthsData(req, res, next) {
+    try {
+      const { username } = req.params;
+      const { data } = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[UPDATE_MONTHS] Usuario: ${username}`);
+      console.log(`[UPDATE_MONTHS] Meses a actualizar: ${data ? data.length : 0}`);
+
+      // Validar que se proporcionó el username
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: 'El parámetro username es requerido'
+        });
+      }
+
+      // Validar que se proporcionó el array de datos
+      if (!data) {
+        return res.status(400).json({
+          success: false,
+          message: 'El campo data es requerido en el body'
+        });
+      }
+
+      // Actualizar datos de meses
+      const result = await dataService.updateMonthsData(username, data, db, collection);
+
+      console.log(`[UPDATE_MONTHS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      if (result.success) {
+        console.log(`[UPDATE_MONTHS] Modificados: ${result.modified}, Insertados: ${result.inserted}`);
+        if (result.conflicts && result.conflicts.length > 0) {
+          console.log(`[UPDATE_MONTHS] Conflictos: ${result.conflicts.length}`);
+        }
+      }
+      console.log('');
+
+      // Responder según el resultado
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        message: result.message,
+        conflicts: result.conflicts || []
+      });
+    } catch (error) {
+      console.error('[UPDATE_MONTHS] Error:', error);
       next(error);
     }
   }
@@ -59,7 +162,7 @@ class DataController {
       // Obtener lista de usuarios
       const result = await dataService.getAllUsers();
 
-      console.log(`[USERS] Resultado: ${result.success ? 'OK' : 'ERROR'}`);
+      console.log(`[USERS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
       console.log(`[USERS] Total usuarios: ${result.users ? result.users.length : 0}\n`);
 
       // Responder con la lista de usuarios

@@ -120,16 +120,18 @@ app.use('/auth', authRoutes);
 
 /**
  * Rutas de configuración (con JWT)
- * GET /config/master-lists - Obtener listas maestras (público)
+ * GET /config/master-lists - Obtener listas maestras (requiere JWT)
  * POST /config/master-lists - Actualizar listas maestras (requiere JWT admin)
  * POST /config/init-master-lists - Inicializar listas maestras
  */
 app.use('/config', configRoutes);
 
 /**
- * Rutas de datos
- * GET /data/timestamps/:username - Obtener timestamps de un usuario
- * GET /data/users - Obtener lista de usuarios
+ * Rutas de datos (con JWT)
+ * GET /data/timestamps/:username - Obtener timestamps de un usuario (requiere JWT)
+ * POST /data/months/:username - Obtener datos de meses específicos (requiere JWT)
+ * PUT /data/months/:username - Actualizar datos de meses específicos (requiere JWT)
+ * GET /data/users - Obtener lista de usuarios (requiere JWT)
  */
 app.use('/data', dataRoutes);
 
@@ -152,11 +154,13 @@ app.use((req, res) => {
       'POST /auth/change-password',
       'POST /auth/admin-change-password',
       'POST /auth/init-db',
-      'GET /config/master-lists',
+      'GET /config/master-lists (requiere JWT)',
       'POST /config/master-lists (requiere JWT admin)',
       'POST /config/init-master-lists',
-      'GET /data/timestamps/:username',
-      'GET /data/users'
+      'GET /data/timestamps/:username (requiere JWT)',
+      'POST /data/months/:username (requiere JWT)',
+      'PUT /data/months/:username (requiere JWT)',
+      'GET /data/users (requiere JWT)'
     ]
   });
 });
@@ -176,25 +180,20 @@ const server = app.listen(PORT, () => {
 ║   Logging: ${isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO'}
 ║   Auth: 🔐 JWT (${process.env.JWT_EXPIRES_IN || '24h'})
 ╠════════════════════════════════════════════╣
-║   Endpoints disponibles:                   ║
-║   • HEAD /                                 ║
-║   • GET  /status                           ║
-║   • POST /sync/check                       ║
-║   • POST /sync/push                        ║
-║   • POST /sync/init-indexes                ║
-║   • POST /auth/login (JWT)                 ║
-║   • POST /auth/login-admin (JWT)           ║
+║   📡 Endpoints de Sincronización:          ║
+║   • GET  /data/timestamps/:username (JWT)  ║
+║   • POST /data/months/:username (JWT)      ║
+║   • PUT  /data/months/:username (JWT)      ║
+║                                            ║
+║   ⚙️  Endpoints de Configuración:          ║
+║   • GET  /config/master-lists (JWT)        ║
+║   • POST /config/master-lists (JWT Admin)  ║
+║                                            ║
+║   🔐 Endpoints de Autenticación:           ║
+║   • POST /auth/login                       ║
+║   • POST /auth/login-admin                 ║
 ║   • POST /auth/refresh                     ║
 ║   • POST /auth/verify                      ║
-║   • POST /auth/create-user                 ║
-║   • POST /auth/change-password             ║
-║   • POST /auth/admin-change-password       ║
-║   • POST /auth/init-db                     ║
-║   • GET  /config/master-lists              ║
-║   • POST /config/master-lists (JWT Admin)  ║
-║   • POST /config/init-master-lists         ║
-║   • GET  /data/timestamps/:username        ║
-║   • GET  /data/users                       ║
 ╚════════════════════════════════════════════╝
   `);
 });

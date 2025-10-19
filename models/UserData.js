@@ -109,6 +109,151 @@ class UserData {
   }
 
   /**
+   * Obtiene los datos completos de meses específicos de un usuario
+   * @param {string} username - Nombre de usuario
+   * @param {Array<string>} months - Array de meses en formato YYYY-MM
+   * @param {string} dbName - Nombre de la base de datos
+   * @param {string} collectionName - Nombre de la colección
+   * @returns {Array} Array de documentos con los datos mensuales
+   */
+  async getMonthsData(username, months, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Obteniendo datos de meses para: ${username}`);
+      console.log(`[UserData] Meses solicitados: ${months.join(', ')}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      // Buscar los documentos de los meses solicitados
+      const documents = await collection
+        .find({
+          username: username,
+          yearMonth: { $in: months }
+        })
+        .toArray();
+
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
+      // Transformar los documentos al formato esperado
+      const data = documents.map(doc => ({
+        username: doc.username,
+        yearMonth: doc.yearMonth,
+        updatedAt: doc.updatedAt,
+        monthData: doc.monthData || {}
+      }));
+
+      return {
+        success: true,
+        data
+      };
+    } catch (error) {
+      console.error('[UserData] Error al obtener datos de meses:', error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
+
+  /**
+   * Actualiza o inserta los datos de meses específicos de un usuario
+   * @param {string} username - Nombre de usuario
+   * @param {Array<object>} monthsData - Array de objetos con datos mensuales
+   * @param {string} dbName - Nombre de la base de datos
+   * @param {string} collectionName - Nombre de la colección
+   * @returns {object} Resultado de la operación
+   */
+  async updateMonthsData(username, monthsData, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Actualizando datos de meses para: ${username}`);
+      console.log(`[UserData] Meses a actualizar: ${monthsData.length}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      const bulkOps = [];
+      const conflicts = [];
+
+      for (const monthData of monthsData) {
+        // Validar que el username coincide
+        if (monthData.username !== username) {
+          conflicts.push({
+            yearMonth: monthData.yearMonth,
+            reason: 'Username no coincide'
+          });
+          continue;
+        }
+
+        // Verificar si existe el documento
+        const existing = await collection.findOne({
+          username: username,
+          yearMonth: monthData.yearMonth
+        });
+
+        // Si existe, verificar conflictos de versión
+        if (existing && existing.updatedAt) {
+          const existingDate = new Date(existing.updatedAt);
+          const newDate = new Date(monthData.updatedAt);
+
+          // Si la versión del servidor es más nueva, hay conflicto
+          if (existingDate > newDate) {
+            conflicts.push({
+              yearMonth: monthData.yearMonth,
+              reason: 'Versión del servidor más reciente',
+              serverUpdatedAt: existing.updatedAt,
+              clientUpdatedAt: monthData.updatedAt
+            });
+            continue;
+          }
+        }
+
+        // Preparar operación de actualización
+        bulkOps.push({
+          updateOne: {
+            filter: {
+              username: username,
+              yearMonth: monthData.yearMonth
+            },
+            update: {
+              $set: {
+                username: username,
+                yearMonth: monthData.yearMonth,
+                updatedAt: monthData.updatedAt,
+                monthData: monthData.monthData
+              }
+            },
+            upsert: true
+          }
+        });
+      }
+
+      // Ejecutar operaciones en bulk si hay alguna
+      let writeResult = null;
+      if (bulkOps.length > 0) {
+        writeResult = await collection.bulkWrite(bulkOps);
+        console.log(`[UserData] Operaciones ejecutadas: ${bulkOps.length}`);
+        console.log(`[UserData] Insertados: ${writeResult.upsertedCount}`);
+        console.log(`[UserData] Modificados: ${writeResult.modifiedCount}`);
+      }
+
+      return {
+        success: true,
+        modified: writeResult ? writeResult.modifiedCount : 0,
+        inserted: writeResult ? writeResult.upsertedCount : 0,
+        conflicts: conflicts
+      };
+    } catch (error) {
+      console.error('[UserData] Error al actualizar datos de meses:', error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
+
+  /**
    * Verifica si un usuario existe en la base de datos
    * @param {string} username - Nombre de usuario
    * @param {string} dbName - Nombre de la base de datos

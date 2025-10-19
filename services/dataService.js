@@ -19,10 +19,20 @@ class DataService {
       console.log(`[DataService] Obteniendo timestamps para usuario: ${username}`);
       console.log(`[DataService] DB: ${targetDb}, Collection: ${targetCollection}`);
 
-      // Obtener todos los documentos del usuario
-      const documents = await UserData.findByUsername(username, targetDb, targetCollection);
+      // Usar el método correcto del modelo UserData
+      const result = await UserData.getTimestamps(username, targetDb, targetCollection);
 
-      if (!documents || documents.length === 0) {
+      if (!result.success) {
+        console.log(`[DataService] Error al obtener timestamps del modelo`);
+        return {
+          success: false,
+          message: 'Error al obtener timestamps',
+          timestamps: {},
+          statusCode: 500
+        };
+      }
+
+      if (!result.found) {
         console.log(`[DataService] No se encontraron documentos para el usuario: ${username}`);
         return {
           success: true,
@@ -32,28 +42,165 @@ class DataService {
         };
       }
 
-      // Construir objeto de timestamps
-      const timestamps = {};
-      documents.forEach(doc => {
-        if (doc.monthKey && doc.lastModified) {
-          timestamps[doc.monthKey] = doc.lastModified;
-        }
-      });
-
-      console.log(`[DataService] Timestamps encontrados: ${Object.keys(timestamps).length}`);
+      console.log(`[DataService] Timestamps encontrados: ${Object.keys(result.timestamps).length}`);
 
       return {
         success: true,
         message: 'Timestamps obtenidos correctamente',
-        timestamps,
+        timestamps: result.timestamps,
         statusCode: 200
       };
     } catch (error) {
       console.error('[DataService] Error al obtener timestamps:', error);
       return {
         success: false,
-        message: 'Error al obtener timestamps',
+        message: 'Error al obtener timestamps: ' + error.message,
         timestamps: {},
+        statusCode: 500
+      };
+    }
+  }
+
+  /**
+   * Obtiene los datos completos de meses específicos de un usuario
+   */
+  async getMonthsData(username, months, dbName = null, collectionName = null) {
+    try {
+      // Validar entrada
+      if (!Array.isArray(months) || months.length === 0) {
+        return {
+          success: false,
+          message: 'El array de meses es requerido y no puede estar vacío',
+          data: [],
+          statusCode: 400
+        };
+      }
+
+      // Validar formato de meses (YYYY-MM)
+      const monthRegex = /^\d{4}-\d{2}$/;
+      const invalidMonths = months.filter(m => !monthRegex.test(m));
+      if (invalidMonths.length > 0) {
+        return {
+          success: false,
+          message: `Formato de mes inválido: ${invalidMonths.join(', ')}. Use YYYY-MM`,
+          data: [],
+          statusCode: 400
+        };
+      }
+
+      // Usar valores por defecto si no se proporcionan
+      const targetDb = dbName || process.env.MONGO_DB_NAME || 'timeTrackingDB';
+      const targetCollection = collectionName || process.env.MONGO_COLLECTION_NAME || 'monthlyData';
+
+      console.log(`[DataService] Obteniendo datos de meses para usuario: ${username}`);
+      console.log(`[DataService] Meses: ${months.join(', ')}`);
+
+      // Obtener datos del modelo
+      const result = await UserData.getMonthsData(username, months, targetDb, targetCollection);
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: 'Error al obtener datos de meses',
+          data: [],
+          statusCode: 500
+        };
+      }
+
+      console.log(`[DataService] Datos obtenidos: ${result.data.length} meses`);
+
+      return {
+        success: true,
+        message: 'Datos obtenidos correctamente',
+        data: result.data,
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('[DataService] Error al obtener datos de meses:', error);
+      return {
+        success: false,
+        message: 'Error al obtener datos de meses: ' + error.message,
+        data: [],
+        statusCode: 500
+      };
+    }
+  }
+
+  /**
+   * Actualiza los datos de meses específicos de un usuario
+   */
+  async updateMonthsData(username, monthsData, dbName = null, collectionName = null) {
+    try {
+      // Validar entrada
+      if (!Array.isArray(monthsData) || monthsData.length === 0) {
+        return {
+          success: false,
+          message: 'El array de datos es requerido y no puede estar vacío',
+          conflicts: [],
+          statusCode: 400
+        };
+      }
+
+      // Validar estructura de cada elemento
+      for (const monthData of monthsData) {
+        if (!monthData.username || !monthData.yearMonth || !monthData.updatedAt) {
+          return {
+            success: false,
+            message: 'Cada elemento debe tener username, yearMonth y updatedAt',
+            conflicts: [],
+            statusCode: 400
+          };
+        }
+
+        // Validar que el username coincide
+        if (monthData.username !== username) {
+          return {
+            success: false,
+            message: `El username en los datos (${monthData.username}) no coincide con el de la URL (${username})`,
+            conflicts: [],
+            statusCode: 400
+          };
+        }
+      }
+
+      // Usar valores por defecto si no se proporcionan
+      const targetDb = dbName || process.env.MONGO_DB_NAME || 'timeTrackingDB';
+      const targetCollection = collectionName || process.env.MONGO_COLLECTION_NAME || 'monthlyData';
+
+      console.log(`[DataService] Actualizando datos de meses para usuario: ${username}`);
+      console.log(`[DataService] Meses a actualizar: ${monthsData.length}`);
+
+      // Actualizar datos en el modelo
+      const result = await UserData.updateMonthsData(username, monthsData, targetDb, targetCollection);
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: 'Error al actualizar datos de meses',
+          conflicts: [],
+          statusCode: 500
+        };
+      }
+
+      console.log(`[DataService] Datos actualizados: ${result.modified} modificados, ${result.inserted} insertados`);
+      if (result.conflicts.length > 0) {
+        console.log(`[DataService] Conflictos detectados: ${result.conflicts.length}`);
+      }
+
+      return {
+        success: true,
+        message: 'Datos actualizados correctamente',
+        modified: result.modified,
+        inserted: result.inserted,
+        conflicts: result.conflicts,
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('[DataService] Error al actualizar datos de meses:', error);
+      return {
+        success: false,
+        message: 'Error al actualizar datos de meses: ' + error.message,
+        conflicts: [],
         statusCode: 500
       };
     }

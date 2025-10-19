@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const configController = require('../controllers/configController');
 const { validateUpdateMasterLists } = require('../middleware/configValidation');
-const { requireAdmin } = require('../middleware/authMiddleware');
+const { requireAdmin, requireAuth } = require('../middleware/authMiddleware');
 
 /**
  * Rutas de Configuración con JWT
  */
 
-// GET /config/master-lists - Obtener listas maestras (público)
-router.get('/master-lists', configController.getMasterLists);
+// GET /config/master-lists - Obtener listas maestras (requiere autenticación)
+router.get('/master-lists', requireAuth, configController.getMasterLists);
 
 // POST /config/master-lists - Actualizar listas maestras (solo admin con JWT)
 router.post(
