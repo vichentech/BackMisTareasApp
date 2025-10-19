@@ -2,24 +2,31 @@ const { body, validationResult } = require('express-validator');
 
 /**
  * Middleware de validación para configuración
+ * Permite actualizaciones parciales de listas maestras
  */
 
 /**
  * Validación para actualizar listas maestras
+ * Permite arrays vacíos - solo actualiza los arrays que tienen contenido
  */
 const validateUpdateMasterLists = [
-  // Validar projects
+  // Validar que projects existe y es un array (puede estar vacío)
   body('projects')
-    .isArray({ min: 1 })
-    .withMessage('projects debe ser un array con al menos un elemento'),
+    .exists()
+    .withMessage('projects es requerido')
+    .isArray()
+    .withMessage('projects debe ser un array'),
   
+  // Si projects tiene elementos, validarlos
   body('projects.*.id')
+    .if(body('projects').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
     .withMessage('Cada proyecto debe tener un id válido'),
 
   body('projects.*.pnr')
+    .if(body('projects').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
@@ -28,6 +35,7 @@ const validateUpdateMasterLists = [
     .withMessage('El pnr no puede exceder 50 caracteres'),
 
   body('projects.*.pnm')
+    .if(body('projects').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
@@ -35,18 +43,23 @@ const validateUpdateMasterLists = [
     .isLength({ max: 200 })
     .withMessage('El pnm no puede exceder 200 caracteres'),
 
-  // Validar mainTasks
+  // Validar que mainTasks existe y es un array (puede estar vacío)
   body('mainTasks')
-    .isArray({ min: 1 })
-    .withMessage('mainTasks debe ser un array con al menos un elemento'),
+    .exists()
+    .withMessage('mainTasks es requerido')
+    .isArray()
+    .withMessage('mainTasks debe ser un array'),
   
+  // Si mainTasks tiene elementos, validarlos
   body('mainTasks.*.id')
+    .if(body('mainTasks').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
     .withMessage('Cada tarea debe tener un id válido'),
 
   body('mainTasks.*.name')
+    .if(body('mainTasks').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
@@ -54,18 +67,23 @@ const validateUpdateMasterLists = [
     .isLength({ max: 200 })
     .withMessage('El name de la tarea no puede exceder 200 caracteres'),
 
-  // Validar vehicles
+  // Validar que vehicles existe y es un array (puede estar vacío)
   body('vehicles')
-    .isArray({ min: 1 })
-    .withMessage('vehicles debe ser un array con al menos un elemento'),
+    .exists()
+    .withMessage('vehicles es requerido')
+    .isArray()
+    .withMessage('vehicles debe ser un array'),
   
+  // Si vehicles tiene elementos, validarlos
   body('vehicles.*.id')
+    .if(body('vehicles').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()
     .withMessage('Cada vehículo debe tener un id válido'),
 
   body('vehicles.*.name')
+    .if(body('vehicles').isArray({ min: 1 }))
     .isString()
     .trim()
     .notEmpty()

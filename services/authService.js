@@ -367,6 +367,35 @@ class AuthService {
       throw error;
     }
   }
+
+
+/**
+ * Obtiene un usuario por username (para refresh token)
+ */
+async getUserByUsername(username) {
+  try {
+    const user = await User.findByUsername(username);
+    if (!user) {
+      return null;
+    }
+    return {
+      username: user.username,
+      role: user.role
+    };
+  } catch (error) {
+    console.error('Error en getUserByUsername:', error);
+    throw error;
+  }
 }
+
+
+}
+
+
+
+
+
+
+
 
 module.exports = new AuthService();

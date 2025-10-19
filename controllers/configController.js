@@ -1,5 +1,4 @@
 const configService = require('../services/configService');
-const authService = require('../services/authService');
 
 /**
  * Controlador de Configuración
@@ -28,42 +27,45 @@ class ConfigController {
 
   /**
    * POST /config/master-lists
-   * Actualizar listas maestras (solo admin)
+   * Actualizar listas maestras (solo admin con JWT)
+   * Permite actualizaciones parciales - solo actualiza los arrays que tienen contenido
    */
   async updateMasterLists(req, res, next) {
     try {
-      // Verificar autenticación
-      if (!req.auth || !req.auth.username || !req.auth.password) {
-        return res.status(401).json({
-          success: false,
-          message: 'No autorizado. Se requiere autenticación.'
-        });
-      }
-
-      // Verificar que el usuario es administrador
-      const authResult = await authService.authenticateAdmin(
-        req.auth.username,
-        req.auth.password
-      );
-
-      if (!authResult.success) {
-        return res.status(403).json({
-          success: false,
-          message: 'Acceso denegado. Se requieren permisos de administrador.'
-        });
-      }
+      // El middleware requireAdmin ya verificó el token y el rol
+      // La información del usuario está en req.user
+      console.log(`[CONFIG] Admin ${req.user.username} actualizando listas maestras`);
 
       const { projects, mainTasks, vehicles } = req.body;
 
-      // Validar que se enviaron los datos
-      if (!projects || !mainTasks || !vehicles) {
+      // Validar que al menos se envió la estructura (aunque estén vacíos)
+      if (projects === undefined || mainTasks === undefined || vehicles === undefined) {
         return res.status(400).json({
           success: false,
-          message: 'projects, mainTasks y vehicles son requeridos'
+          message: 'Debes enviar projects, mainTasks y vehicles (pueden estar vacíos)'
         });
       }
 
-      // Actualizar listas
+      // Validar que al menos uno de los arrays tiene contenido
+      const hasProjects = Array.isArray(projects) && projects.length > 0;
+      const hasMainTasks = Array.isArray(mainTasks) && mainTasks.length > 0;
+      const hasVehicles = Array.isArray(vehicles) && vehicles.length > 0;
+
+      if (!hasProjects && !hasMainTasks && !hasVehicles) {
+        return res.status(400).json({
+          success: false,
+          message: 'Al menos uno de los arrays (projects, mainTasks, vehicles) debe tener contenido'
+        });
+      }
+
+      // Log de lo que se va a actualizar
+      const updating = [];
+      if (hasProjects) updating.push(`${projects.length} proyectos`);
+      if (hasMainTasks) updating.push(`${mainTasks.length} tareas`);
+      if (hasVehicles) updating.push(`${vehicles.length} vehículos`);
+      console.log(`[CONFIG] Actualizando: ${updating.join(', ')}`);
+
+      // Actualizar listas (el servicio maneja la actualización parcial)
       const result = await configService.updateMasterLists(projects, mainTasks, vehicles);
 
       return res.status(result.statusCode || 200).json({

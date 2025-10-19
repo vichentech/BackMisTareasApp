@@ -5,13 +5,13 @@ const { validateUpdateMasterLists } = require('../middleware/configValidation');
 const { requireAdmin } = require('../middleware/authMiddleware');
 
 /**
- * Rutas de Configuración
+ * Rutas de Configuración con JWT
  */
 
 // GET /config/master-lists - Obtener listas maestras (público)
 router.get('/master-lists', configController.getMasterLists);
 
-// POST /config/master-lists - Actualizar listas maestras (solo admin)
+// POST /config/master-lists - Actualizar listas maestras (solo admin con JWT)
 router.post(
   '/master-lists',
   requireAdmin,

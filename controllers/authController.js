@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const jwtService = require('../services/jwtService');
 
 /**
  * Controlador de Autenticación
@@ -7,7 +8,7 @@ const authService = require('../services/authService');
 class AuthController {
   /**
    * POST /auth/login
-   * Login de usuario regular
+   * Login de usuario regular - Devuelve token JWT
    */
   async login(req, res, next) {
     try {
@@ -31,9 +32,25 @@ class AuthController {
         });
       }
 
+      // Generar tokens JWT
+      const accessToken = jwtService.generateAccessToken({
+        username: result.user.username,
+        role: result.user.role
+      });
+
+      const refreshToken = jwtService.generateRefreshToken({
+        username: result.user.username
+      });
+
       return res.status(200).json({
         success: true,
-        message: result.message
+        message: result.message,
+        accessToken,
+        refreshToken,
+        user: {
+          username: result.user.username,
+          role: result.user.role
+        }
       });
     } catch (error) {
       console.error('Error en login:', error);
@@ -43,7 +60,7 @@ class AuthController {
 
   /**
    * POST /auth/login-admin
-   * Login de administrador
+   * Login de administrador - Devuelve token JWT
    */
   async loginAdmin(req, res, next) {
     try {
@@ -67,12 +84,129 @@ class AuthController {
         });
       }
 
+      // Generar tokens JWT
+      const accessToken = jwtService.generateAccessToken({
+        username: result.user.username,
+        role: result.user.role
+      });
+
+      const refreshToken = jwtService.generateRefreshToken({
+        username: result.user.username
+      });
+
       return res.status(200).json({
         success: true,
-        message: result.message
+        message: result.message,
+        accessToken,
+        refreshToken,
+        user: {
+          username: result.user.username,
+          role: result.user.role
+        }
       });
     } catch (error) {
       console.error('Error en loginAdmin:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * POST /auth/refresh
+   * Refrescar token de acceso usando refresh token
+   */
+  async refreshToken(req, res, next) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'Refresh token es requerido'
+        });
+      }
+
+      // Verificar refresh token
+      const verification = jwtService.verifyToken(refreshToken);
+
+      if (!verification.valid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Refresh token inválido o expirado'
+        });
+      }
+
+      // Verificar que es un refresh token
+      if (verification.decoded.type !== 'refresh') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token inválido. Se requiere un refresh token.'
+        });
+      }
+
+      // Obtener información del usuario
+      const username = verification.decoded.username;
+      const user = await authService.getUserByUsername(username);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      // Generar nuevo access token
+      const newAccessToken = jwtService.generateAccessToken({
+        username: user.username,
+        role: user.role
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Token refrescado correctamente',
+        accessToken: newAccessToken
+      });
+    } catch (error) {
+      console.error('Error en refreshToken:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * POST /auth/verify
+   * Verificar si un token es válido
+   */
+  async verifyToken(req, res, next) {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = jwtService.extractTokenFromHeader(authHeader);
+
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token no proporcionado'
+        });
+      }
+
+      const verification = jwtService.verifyToken(token);
+
+      if (!verification.valid) {
+        return res.status(401).json({
+          success: false,
+          message: verification.error,
+          expired: verification.expired
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Token válido',
+        user: {
+          username: verification.decoded.username,
+          role: verification.decoded.role
+        }
+      });
+    } catch (error) {
+      console.error('Error en verifyToken:', error);
       next(error);
     }
   }
@@ -107,7 +241,7 @@ class AuthController {
   }
 
   /**
-   * GET /users
+   * GET /data/users
    * Obtener lista de usuarios
    */
   async getUsers(req, res, next) {
@@ -115,6 +249,7 @@ class AuthController {
       const result = await authService.getAllUsers();
 
       return res.status(200).json({
+        success: true,
         users: result.users
       });
     } catch (error) {

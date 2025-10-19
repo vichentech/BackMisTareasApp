@@ -106,9 +106,11 @@ app.get('/status', syncController.getStatus);
 app.use('/sync', syncRoutes);
 
 /**
- * Rutas de autenticación
- * POST /auth/login - Login de usuario
- * POST /auth/login-admin - Login de administrador
+ * Rutas de autenticación (con JWT)
+ * POST /auth/login - Login de usuario (devuelve JWT)
+ * POST /auth/login-admin - Login de administrador (devuelve JWT)
+ * POST /auth/refresh - Refrescar token de acceso
+ * POST /auth/verify - Verificar token
  * POST /auth/create-user - Crear usuario
  * POST /auth/change-password - Cambiar contraseña
  * POST /auth/admin-change-password - Admin cambia contraseña
@@ -117,9 +119,9 @@ app.use('/sync', syncRoutes);
 app.use('/auth', authRoutes);
 
 /**
- * Rutas de configuración
- * GET /config/master-lists - Obtener listas maestras
- * POST /config/master-lists - Actualizar listas maestras
+ * Rutas de configuración (con JWT)
+ * GET /config/master-lists - Obtener listas maestras (público)
+ * POST /config/master-lists - Actualizar listas maestras (requiere JWT admin)
  * POST /config/init-master-lists - Inicializar listas maestras
  */
 app.use('/config', configRoutes);
@@ -144,12 +146,14 @@ app.use((req, res) => {
       'POST /sync/init-indexes',
       'POST /auth/login',
       'POST /auth/login-admin',
+      'POST /auth/refresh',
+      'POST /auth/verify',
       'POST /auth/create-user',
       'POST /auth/change-password',
       'POST /auth/admin-change-password',
       'POST /auth/init-db',
       'GET /config/master-lists',
-      'POST /config/master-lists',
+      'POST /config/master-lists (requiere JWT admin)',
       'POST /config/init-master-lists',
       'GET /data/timestamps/:username',
       'GET /data/users'
@@ -170,6 +174,7 @@ const server = app.listen(PORT, () => {
 ║   Entorno: ${process.env.NODE_ENV || 'development'}          
 ║   CORS: ${isDevelopment ? '⚠️  ABIERTO (Desarrollo)' : '🔒 RESTRINGIDO (Producción)'}
 ║   Logging: ${isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO'}
+║   Auth: 🔐 JWT (${process.env.JWT_EXPIRES_IN || '24h'})
 ╠════════════════════════════════════════════╣
 ║   Endpoints disponibles:                   ║
 ║   • HEAD /                                 ║
@@ -177,14 +182,16 @@ const server = app.listen(PORT, () => {
 ║   • POST /sync/check                       ║
 ║   • POST /sync/push                        ║
 ║   • POST /sync/init-indexes                ║
-║   • POST /auth/login                       ║
-║   • POST /auth/login-admin                 ║
+║   • POST /auth/login (JWT)                 ║
+║   • POST /auth/login-admin (JWT)           ║
+║   • POST /auth/refresh                     ║
+║   • POST /auth/verify                      ║
 ║   • POST /auth/create-user                 ║
 ║   • POST /auth/change-password             ║
 ║   • POST /auth/admin-change-password       ║
 ║   • POST /auth/init-db                     ║
 ║   • GET  /config/master-lists              ║
-║   • POST /config/master-lists              ║
+║   • POST /config/master-lists (JWT Admin)  ║
 ║   • POST /config/init-master-lists         ║
 ║   • GET  /data/timestamps/:username        ║
 ║   • GET  /data/users                       ║

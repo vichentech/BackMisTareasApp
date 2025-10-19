@@ -1,76 +1,146 @@
+const jwtService = require('../services/jwtService');
+
 /**
- * Middleware de Autenticación
- * Verifica que el usuario sea administrador
+ * Middleware de Autenticación con JWT
+ * Verifica que el usuario esté autenticado mediante token JWT
  */
+
+/**
+ * Middleware para verificar que el usuario está autenticado
+ * Extrae y valida el token JWT del header Authorization
+ */
+const requireAuth = (req, res, next) => {
+  try {
+    // Obtener token del header Authorization
+    const authHeader = req.headers.authorization;
+    const token = jwtService.extractTokenFromHeader(authHeader);
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No autorizado. Token no proporcionado.'
+      });
+    }
+
+    // Verificar token
+    const verification = jwtService.verifyToken(token);
+
+    if (!verification.valid) {
+      if (verification.expired) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expirado. Por favor, inicia sesión nuevamente.',
+          expired: true
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: verification.error || 'Token inválido.'
+      });
+    }
+
+    // Guardar información del usuario en req
+    req.user = {
+      username: verification.decoded.username,
+      role: verification.decoded.role
+    };
+
+    next();
+  } catch (error) {
+    console.error('Error en requireAuth:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Error al verificar autenticación'
+    });
+  }
+};
 
 /**
  * Middleware para verificar que el usuario es administrador
- * NOTA: Este es un middleware básico. En producción deberías usar JWT o sesiones.
+ * Debe usarse después de requireAuth
  */
 const requireAdmin = (req, res, next) => {
-  // Obtener credenciales del header Authorization
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'No autorizado. Se requiere autenticación.'
-    });
-  }
-
   try {
-    // Decodificar credenciales Basic Auth
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-    const [username, password] = credentials.split(':');
+    // Obtener token del header Authorization
+    const authHeader = req.headers.authorization;
+    const token = jwtService.extractTokenFromHeader(authHeader);
 
-    // Guardar en req para uso posterior
-    req.auth = {
-      username,
-      password
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No autorizado. Token no proporcionado.'
+      });
+    }
+
+    // Verificar token
+    const verification = jwtService.verifyToken(token);
+
+    if (!verification.valid) {
+      if (verification.expired) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expirado. Por favor, inicia sesión nuevamente.',
+          expired: true
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: verification.error || 'Token inválido.'
+      });
+    }
+
+    // Verificar que el usuario es admin
+    if (verification.decoded.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Acceso denegado. Se requieren permisos de administrador.'
+      });
+    }
+
+    // Guardar información del usuario en req
+    req.user = {
+      username: verification.decoded.username,
+      role: verification.decoded.role
     };
 
-    // Verificar que el usuario es admin (esto se hará en el controlador)
     next();
   } catch (error) {
-    return res.status(401).json({
+    console.error('Error en requireAdmin:', error);
+    return res.status(403).json({
       success: false,
-      message: 'Credenciales inválidas'
+      message: 'Error al verificar permisos de administrador'
     });
   }
 };
 
 /**
- * Middleware alternativo usando un header personalizado
- * Útil si el frontend envía el username y role en headers
+ * Middleware opcional para autenticación
+ * Si hay token, lo valida, pero no bloquea si no hay token
  */
-const requireAdminByHeader = (req, res, next) => {
-  const username = req.headers['x-username'];
-  const role = req.headers['x-user-role'];
+const optionalAuth = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = jwtService.extractTokenFromHeader(authHeader);
 
-  if (!username || !role) {
-    return res.status(401).json({
-      success: false,
-      message: 'No autorizado. Se requieren headers de autenticación.'
-    });
+    if (token) {
+      const verification = jwtService.verifyToken(token);
+      if (verification.valid) {
+        req.user = {
+          username: verification.decoded.username,
+          role: verification.decoded.role
+        };
+      }
+    }
+
+    next();
+  } catch (error) {
+    // No bloquear si hay error, solo continuar sin usuario
+    next();
   }
-
-  if (role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Acceso denegado. Se requieren permisos de administrador.'
-    });
-  }
-
-  req.auth = {
-    username,
-    role
-  };
-
-  next();
 };
 
 module.exports = {
+  requireAuth,
   requireAdmin,
-  requireAdminByHeader
+  optionalAuth
 };
