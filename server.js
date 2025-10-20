@@ -8,6 +8,7 @@ const syncRoutes = require('./routes/syncRoutes');
 const authRoutes = require('./routes/authRoutes');
 const configRoutes = require('./routes/configRoutes');
 const dataRoutes = require('./routes/dataRoutes');
+const setupRoutes = require('./routes/setupRoutes'); // NUEVO
 const { errorHandler } = require('./middleware/errorHandler');
 const syncController = require('./controllers/syncController');
 const requestLogger = require('./middleware/requestLogger');
@@ -71,8 +72,19 @@ const authLimiter = rateLimit({
   skip: (req) => isDevelopment && (req.ip === '::1' || req.ip === '127.0.0.1')
 });
 
+// Rate limiting moderado para setup (público pero controlado)
+const setupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: isDevelopment ? 100 : 10, // 10 intentos en producción
+  message: 'Demasiados intentos de configuración, por favor intenta más tarde.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => isDevelopment && (req.ip === '::1' || req.ip === '127.0.0.1')
+});
+
 app.use('/sync/', limiter);
 app.use('/auth/', authLimiter);
+app.use('/setup/', setupLimiter); // NUEVO
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -96,6 +108,13 @@ app.head('/', syncController.testConnection);
  * Health check del servidor
  */
 app.get('/status', syncController.getStatus);
+
+/**
+ * Rutas de configuración inicial (públicas)
+ * GET /setup/status - Verificar si se necesita configuración inicial
+ * POST /setup/create-admin - Crear primer administrador
+ */
+app.use('/setup', setupRoutes);
 
 /**
  * Rutas de sincronización
@@ -143,6 +162,8 @@ app.use((req, res) => {
     availableEndpoints: [
       'HEAD /',
       'GET /status',
+      'GET /setup/status',
+      'POST /setup/create-admin',
       'POST /sync/check',
       'POST /sync/push',
       'POST /sync/init-indexes',
@@ -180,6 +201,10 @@ const server = app.listen(PORT, () => {
 ║   Logging: ${isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO'}
 ║   Auth: 🔐 JWT (${process.env.JWT_EXPIRES_IN || '24h'})
 ╠════════════════════════════════════════════╣
+║   🔧 Endpoints de Configuración Inicial:   ║
+║   • GET  /setup/status                     ║
+║   • POST /setup/create-admin               ║
+║                                            ║
 ║   📡 Endpoints de Sincronización:          ║
 ║   • GET  /data/timestamps/:username (JWT)  ║
 ║   • POST /data/months/:username (JWT)      ║
