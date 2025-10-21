@@ -1,0 +1,997 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    DOCUMENTACIÓN DE ENDPOINTS - BackendMisPartes
+═══════════════════════════════════════════════════════════════════════════════
+
+INFORMACIÓN GENERAL
+═══════════════════════════════════════════════════════════════════════════════
+Base URL: http://localhost:3000 (desarrollo)
+Autenticación: JWT (JSON Web Tokens)
+Formato de respuesta: JSON
+Rate Limiting: 
+  - General: 100 req/15min (desarrollo: 1000)
+  - Auth: 20 req/15min (desarrollo: 100)
+  - Setup: 10 req/15min (desarrollo: 100)
+
+CÓDIGOS DE ESTADO HTTP
+═══════════════════════════════════════════════════════════════════════════════
+200 - OK: Solicitud exitosa
+201 - Created: Recurso creado exitosamente
+400 - Bad Request: Datos inválidos o faltantes
+401 - Unauthorized: No autenticado o token inválido
+403 - Forbidden: No tiene permisos suficientes
+404 - Not Found: Recurso no encontrado
+409 - Conflict: Conflicto (ej: recurso ya existe)
+500 - Internal Server Error: Error del servidor
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ENDPOINTS DE SISTEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+1. HEAD /
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Prueba de conexión rápida al servidor
+Autenticación: No requerida
+Método: HEAD
+
+Respuesta:
+  - Status: 200 OK (sin body)
+
+Uso: Verificar que el servidor está activo y responde
+
+
+2. GET /status
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Health check del servidor con información de estado
+Autenticación: No requerida
+Método: GET
+
+Respuesta exitosa (200):
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600.5
+}
+
+Campos de respuesta:
+  - status: Estado del servidor ("ok")
+  - timestamp: Fecha y hora actual en formato ISO
+  - uptime: Tiempo de actividad del servidor en segundos
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                      ENDPOINTS DE CONFIGURACIÓN INICIAL
+═══════════════════════════════════════════════════════════════════════════════
+
+3. GET /setup/status
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Verifica si el sistema necesita configuración inicial
+Autenticación: No requerida (público)
+Método: GET
+
+Respuesta exitosa (200):
+{
+  "setupNeeded": true
+}
+
+Campos de respuesta:
+  - setupNeeded: true si no existe ningún administrador, false si ya existe
+
+Uso: Llamar antes de mostrar la pantalla de configuración inicial
+
+
+4. POST /setup/create-admin
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Crea el primer usuario administrador del sistema
+Autenticación: No requerida (público con verificación de seguridad)
+Método: POST
+
+IMPORTANTE: Solo funciona si NO existe ningún administrador. Una vez creado
+el primer admin, este endpoint devuelve error 409 (Conflict).
+
+Body (JSON):
+{
+  "username": "admin",
+  "password": "contraseña_segura"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario (string)
+  - password: Contraseña (string, mínimo 6 caracteres recomendado)
+
+Respuesta exitosa (201):
+{
+  "success": true,
+  "message": "Administrador creado exitosamente",
+  "user": {
+    "username": "admin",
+    "role": "admin"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+Respuesta de error (409):
+{
+  "success": false,
+  "message": "Ya existe un administrador en el sistema"
+}
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "Username y password son requeridos"
+}
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ENDPOINTS DE AUTENTICACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+5. POST /auth/login
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Login de usuario regular (devuelve tokens JWT)
+Autenticación: No requerida
+Método: POST
+
+Body (JSON):
+{
+  "username": "usuario",
+  "password": "contraseña"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario
+  - password: Contraseña
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Login exitoso",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "username": "usuario",
+    "role": "user"
+  }
+}
+
+Respuesta de error (401):
+{
+  "success": false,
+  "message": "Credenciales inválidas"
+}
+
+Tokens:
+  - accessToken: Token de acceso (expira en 24h por defecto)
+  - refreshToken: Token para renovar el accessToken (expira en 7d por defecto)
+
+
+6. POST /auth/login-admin
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Login de administrador (devuelve tokens JWT)
+Autenticación: No requerida
+Método: POST
+
+Body (JSON):
+{
+  "username": "admin",
+  "password": "contraseña_admin"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario administrador
+  - password: Contraseña
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Login de administrador exitoso",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "username": "admin",
+    "role": "admin"
+  }
+}
+
+Respuesta de error (401):
+{
+  "success": false,
+  "message": "Credenciales inválidas o usuario no es administrador"
+}
+
+Nota: Solo usuarios con role="admin" pueden hacer login por este endpoint
+
+
+7. POST /auth/refresh
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Refrescar token de acceso usando refresh token
+Autenticación: Refresh Token requerido
+Método: POST
+
+Body (JSON):
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+Campos requeridos:
+  - refreshToken: Token de refresco obtenido en login
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Token refrescado correctamente",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+Respuesta de error (401):
+{
+  "success": false,
+  "message": "Refresh token inválido o expirado"
+}
+
+Uso: Cuando el accessToken expira, usar este endpoint para obtener uno nuevo
+
+
+8. POST /auth/verify
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Verificar si un token es válido
+Autenticación: Token en header Authorization
+Método: POST
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Token válido",
+  "user": {
+    "username": "usuario",
+    "role": "user"
+  }
+}
+
+Respuesta de error (401):
+{
+  "success": false,
+  "message": "Token inválido o expirado",
+  "expired": true
+}
+
+Uso: Verificar si el token actual sigue siendo válido
+
+
+9. POST /auth/create-user
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Crear nuevo usuario
+Autenticación: No especificada (verificar implementación)
+Método: POST
+
+Body (JSON):
+{
+  "username": "nuevo_usuario",
+  "password": "contraseña_segura",
+  "role": "user"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario único
+  - password: Contraseña
+
+Campos opcionales:
+  - role: Rol del usuario ("user" o "admin", por defecto "user")
+
+Respuesta exitosa (201):
+{
+  "success": true,
+  "message": "Usuario creado exitosamente"
+}
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "Username y password son requeridos"
+}
+
+Respuesta de error (409):
+{
+  "success": false,
+  "message": "El usuario ya existe"
+}
+
+
+10. POST /auth/change-password
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Cambiar contraseña del propio usuario
+Autenticación: Recomendada (verificar implementación)
+Método: POST
+
+Body (JSON):
+{
+  "username": "usuario",
+  "currentPassword": "contraseña_actual",
+  "newPassword": "nueva_contraseña"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario
+  - currentPassword: Contraseña actual
+  - newPassword: Nueva contraseña
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Contraseña cambiada exitosamente"
+}
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "Username, contraseña actual y nueva contraseña son requeridos"
+}
+
+Respuesta de error (401):
+{
+  "success": false,
+  "message": "Contraseña actual incorrecta"
+}
+
+
+11. POST /auth/admin-change-password
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Cambiar contraseña de cualquier usuario (solo admin)
+Autenticación: JWT con rol admin requerido
+Método: POST
+
+Body (JSON):
+{
+  "targetUsername": "usuario_objetivo",
+  "newPassword": "nueva_contraseña"
+}
+
+Campos requeridos:
+  - targetUsername: Nombre del usuario al que cambiar la contraseña
+  - newPassword: Nueva contraseña
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Contraseña cambiada exitosamente"
+}
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "Username del usuario objetivo y nueva contraseña son requeridos"
+}
+
+Respuesta de error (404):
+{
+  "success": false,
+  "message": "Usuario no encontrado"
+}
+
+
+12. POST /auth/init-db
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Inicializar base de datos de autenticación
+Autenticación: No especificada
+Método: POST
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Base de datos inicializada correctamente"
+}
+
+Uso: Configuración inicial del sistema
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ENDPOINTS DE SINCRONIZACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+13. POST /sync/check
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Comprueba qué datos necesita actualizar el cliente
+Autenticación: No especificada (verificar implementación)
+Método: POST
+
+Body (JSON):
+{
+  "username": "usuario",
+  "db": "nombre_base_datos",
+  "collection": "nombre_coleccion",
+  "timestamps": {
+    "2024-01": "2024-01-15T10:30:00.000Z",
+    "2024-02": "2024-02-20T14:45:00.000Z"
+  }
+}
+
+Campos requeridos:
+  - username: Nombre de usuario
+  - timestamps: Objeto con timestamps de cada mes en el cliente
+
+Campos opcionales:
+  - db: Nombre de la base de datos (usa valor por defecto si no se especifica)
+  - collection: Nombre de la colección (usa valor por defecto si no se especifica)
+
+Respuesta exitosa (200):
+{
+  "toUpdate": ["2024-01", "2024-03"],
+  "serverTimestamps": {
+    "2024-01": "2024-01-16T08:20:00.000Z",
+    "2024-02": "2024-02-20T14:45:00.000Z",
+    "2024-03": "2024-03-10T12:00:00.000Z"
+  }
+}
+
+Campos de respuesta:
+  - toUpdate: Array de meses (formato YYYY-MM) que necesitan actualizarse
+  - serverTimestamps: Timestamps actuales en el servidor
+
+Uso: Llamar antes de sincronizar para saber qué meses descargar
+
+
+14. POST /sync/push
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Envía y guarda los datos del cliente en el servidor
+Autenticación: No especificada (verificar implementación)
+Método: POST
+
+Body (JSON):
+{
+  "username": "usuario",
+  "db": "nombre_base_datos",
+  "collection": "nombre_coleccion",
+  "data": [
+    {
+      "username": "usuario",
+      "yearMonth": "2024-01",
+      "updatedAt": "2024-01-16T08:20:00.000Z",
+      "monthData": {
+        "days": [...],
+        "summary": {...}
+      }
+    }
+  ]
+}
+
+Campos requeridos:
+  - username: Nombre de usuario
+  - data: Array de documentos a guardar
+
+Campos opcionales:
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Estructura de cada documento en data:
+  - username: Nombre de usuario
+  - yearMonth: Mes en formato YYYY-MM
+  - updatedAt: Timestamp de última actualización
+  - monthData: Datos del mes (estructura específica de la aplicación)
+
+Respuesta exitosa (200):
+{
+  "toUpdate": ["2024-01"],
+  "message": "Datos guardados correctamente"
+}
+
+Uso: Enviar datos modificados del cliente al servidor
+
+
+15. POST /sync/init-indexes
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Inicializa los índices de la base de datos
+Autenticación: No especificada
+Método: POST
+
+Body (JSON):
+{
+  "db": "nombre_base_datos",
+  "collection": "nombre_coleccion"
+}
+
+Campos requeridos:
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Índices creados correctamente"
+}
+
+Uso: Llamar una vez al configurar el sistema para optimizar las consultas
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ENDPOINTS DE CONFIGURACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+16. GET /config/master-lists
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Obtener listas maestras (proyectos, tareas, vehículos)
+Autenticación: JWT requerido
+Método: GET
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Respuesta exitosa (200):
+{
+  "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
+  "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
+  "vehicles": ["Vehículo 1", "Vehículo 2"],
+  "updatedAt": "2024-01-15T10:30:00.000Z"
+}
+
+Campos de respuesta:
+  - projects: Array de nombres de proyectos
+  - mainTasks: Array de tareas principales
+  - vehicles: Array de vehículos
+  - updatedAt: Timestamp de última actualización
+
+Uso: Obtener las listas maestras para usar en la aplicación
+
+
+17. POST /config/master-lists
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Actualizar listas maestras (solo administradores)
+Autenticación: JWT con rol admin requerido
+Método: POST
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Body (JSON):
+{
+  "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
+  "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
+  "vehicles": ["Vehículo 1", "Vehículo 2"]
+}
+
+Campos requeridos:
+  - projects: Array de proyectos (puede estar vacío)
+  - mainTasks: Array de tareas (puede estar vacío)
+  - vehicles: Array de vehículos (puede estar vacío)
+
+Nota: Al menos uno de los arrays debe tener contenido. Solo se actualizan
+los arrays que tienen elementos.
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Listas maestras actualizadas correctamente",
+  "data": {
+    "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
+    "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
+    "vehicles": ["Vehículo 1", "Vehículo 2"],
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "Al menos uno de los arrays debe tener contenido"
+}
+
+Respuesta de error (403):
+{
+  "success": false,
+  "message": "Acceso denegado. Se requiere rol de administrador"
+}
+
+
+18. POST /config/init-master-lists
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Inicializar listas maestras con valores por defecto
+Autenticación: No especificada
+Método: POST
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Listas maestras inicializadas correctamente",
+  "data": {
+    "projects": [],
+    "mainTasks": [],
+    "vehicles": [],
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+
+Uso: Configuración inicial del sistema
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ENDPOINTS DE DATOS
+═══════════════════════════════════════════════════════════════════════════════
+
+19. GET /data/timestamps/:username
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Obtener timestamps de todos los meses de un usuario
+Autenticación: JWT requerido
+Método: GET
+
+URL Parameters:
+  - username: Nombre de usuario
+
+Query Parameters (opcionales):
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Ejemplo de URL:
+  GET /data/timestamps/usuario?db=miBaseDatos&collection=miColeccion
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "timestamps": {
+    "2024-01": "2024-01-16T08:20:00.000Z",
+    "2024-02": "2024-02-20T14:45:00.000Z",
+    "2024-03": "2024-03-10T12:00:00.000Z"
+  }
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - timestamps: Objeto con timestamps por mes (formato YYYY-MM)
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "El parámetro username es requerido"
+}
+
+
+20. POST /data/months/:username
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Obtener datos completos de meses específicos de un usuario
+Autenticación: JWT requerido
+Método: POST
+
+URL Parameters:
+  - username: Nombre de usuario
+
+Query Parameters (opcionales):
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Body (JSON):
+{
+  "months": ["2024-01", "2024-02", "2024-03"]
+}
+
+Campos requeridos:
+  - months: Array de meses en formato YYYY-MM
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Datos obtenidos correctamente",
+  "data": [
+    {
+      "username": "usuario",
+      "yearMonth": "2024-01",
+      "updatedAt": "2024-01-16T08:20:00.000Z",
+      "monthData": {
+        "days": [...],
+        "summary": {...}
+      }
+    },
+    {
+      "username": "usuario",
+      "yearMonth": "2024-02",
+      "updatedAt": "2024-02-20T14:45:00.000Z",
+      "monthData": {
+        "days": [...],
+        "summary": {...}
+      }
+    }
+  ]
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - message: Mensaje descriptivo
+  - data: Array de documentos con los datos de cada mes
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "El campo months es requerido en el body"
+}
+
+
+21. PUT /data/months/:username
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Actualizar datos completos de meses específicos de un usuario
+Autenticación: JWT requerido
+Método: PUT
+
+URL Parameters:
+  - username: Nombre de usuario
+
+Query Parameters (opcionales):
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Body (JSON):
+{
+  "data": [
+    {
+      "username": "usuario",
+      "yearMonth": "2024-01",
+      "updatedAt": "2024-01-16T08:20:00.000Z",
+      "monthData": {
+        "days": [...],
+        "summary": {...}
+      }
+    }
+  ]
+}
+
+Campos requeridos:
+  - data: Array de documentos a actualizar
+
+Estructura de cada documento:
+  - username: Nombre de usuario
+  - yearMonth: Mes en formato YYYY-MM
+  - updatedAt: Timestamp de última actualización
+  - monthData: Datos del mes
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "message": "Datos actualizados correctamente. Modificados: 2, Insertados: 1",
+  "conflicts": []
+}
+
+Respuesta con conflictos (200):
+{
+  "success": true,
+  "message": "Datos actualizados con conflictos",
+  "conflicts": [
+    {
+      "yearMonth": "2024-01",
+      "reason": "Versión del servidor más reciente",
+      "clientTimestamp": "2024-01-16T08:20:00.000Z",
+      "serverTimestamp": "2024-01-16T10:30:00.000Z"
+    }
+  ]
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - message: Mensaje descriptivo con estadísticas
+  - conflicts: Array de conflictos detectados (si los hay)
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "El campo data es requerido en el body"
+}
+
+
+22. GET /data/users
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Obtener lista de todos los usuarios
+Autenticación: JWT requerido
+Método: GET
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "users": [
+    {
+      "username": "usuario1",
+      "role": "user"
+    },
+    {
+      "username": "admin",
+      "role": "admin"
+    }
+  ]
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - users: Array de usuarios (sin contraseñas)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        AUTENTICACIÓN CON JWT
+═══════════════════════════════════════════════════════════════════════════════
+
+FORMATO DEL TOKEN
+───────────────────────────────────────────────────────────────────────────────
+Los endpoints que requieren autenticación deben incluir el token JWT en el
+header Authorization con el formato:
+
+  Authorization: Bearer <token>
+
+Ejemplo:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InVzdWFyaW8iLCJyb2xlIjoidXNlciIsImlhdCI6MTYxNjE2MTYxNiwiZXhwIjoxNjE2MjQ4MDE2fQ.abc123...
+
+
+TIPOS DE TOKENS
+───────────────────────────────────────────────────────────────────────────────
+1. Access Token:
+   - Duración: 24 horas (por defecto)
+   - Uso: Autenticación en cada petición
+   - Se incluye en el header Authorization
+
+2. Refresh Token:
+   - Duración: 7 días (por defecto)
+   - Uso: Renovar el access token cuando expira
+   - Se envía en el body del endpoint /auth/refresh
+
+
+FLUJO DE AUTENTICACIÓN
+───────────────────────────────────────────────────────────────────────────────
+1. Login:
+   POST /auth/login → Recibe accessToken y refreshToken
+
+2. Peticiones autenticadas:
+   Incluir accessToken en header Authorization
+
+3. Cuando el accessToken expira:
+   POST /auth/refresh con refreshToken → Recibe nuevo accessToken
+
+4. Cuando el refreshToken expira:
+   Volver a hacer login
+
+
+ROLES DE USUARIO
+───────────────────────────────────────────────────────────────────────────────
+- user: Usuario regular (acceso a sus propios datos)
+- admin: Administrador (acceso completo, puede gestionar usuarios y configuración)
+
+Endpoints que requieren rol admin:
+  - POST /config/master-lists
+  - POST /auth/admin-change-password
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        MANEJO DE ERRORES
+═══════════════════════════════════════════════════════════════════════════════
+
+ESTRUCTURA DE RESPUESTAS DE ERROR
+───────────────────────────────────────────────────────────────────────────────
+Todas las respuestas de error siguen el formato:
+
+{
+  "success": false,
+  "message": "Descripción del error"
+}
+
+Algunos errores pueden incluir campos adicionales:
+{
+  "success": false,
+  "message": "Token inválido o expirado",
+  "expired": true
+}
+
+
+ERRORES COMUNES
+───────────────────────────────────────────────────────────────────────────────
+400 Bad Request:
+  - Datos faltantes o inválidos
+  - Formato de datos incorrecto
+  - Validación fallida
+
+401 Unauthorized:
+  - Token no proporcionado
+  - Token inválido o expirado
+  - Credenciales incorrectas
+
+403 Forbidden:
+  - Usuario no tiene permisos suficientes
+  - Rol insuficiente para la operación
+
+404 Not Found:
+  - Recurso no encontrado
+  - Usuario no existe
+  - Endpoint no existe
+
+409 Conflict:
+  - Usuario ya existe
+  - Recurso ya existe
+  - Conflicto de versiones
+
+500 Internal Server Error:
+  - Error del servidor
+  - Error de base de datos
+  - Error inesperado
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        CONFIGURACIÓN DEL SERVIDOR
+═══════════════════════════════════════════════════════════════════════════════
+
+VARIABLES DE ENTORNO
+───────────────────────────────────────────────────────────────────────────────
+Las siguientes variables de entorno pueden configurarse en el archivo .env:
+
+# Servidor
+PORT=3000
+NODE_ENV=development
+
+# MongoDB
+MONGO_CONNECTION_STRING=mongodb://localhost:27017
+MONGO_DB_NAME=mispartes
+MONGO_COLLECTION_NAME=userData
+
+# JWT
+JWT_SECRET=tu_secreto_super_seguro_aqui
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# CORS (producción)
+ALLOWED_ORIGINS=http://localhost:5173,https://tudominio.com
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+
+MODO DESARROLLO vs PRODUCCIÓN
+───────────────────────────────────────────────────────────────────────────────
+Desarrollo (NODE_ENV=development):
+  - CORS abierto para todos los orígenes
+  - Rate limiting más permisivo
+  - Logging detallado activado
+  - Sin restricciones de IP para rate limiting local
+
+Producción (NODE_ENV=production):
+  - CORS restringido a orígenes permitidos
+  - Rate limiting estricto
+  - Logging mínimo
+  - Todas las medidas de seguridad activas
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        NOTAS ADICIONALES
+═══════════════════════════════════════════════════════════════════════════════
+
+SEGURIDAD
+───────────────────────────────────────────────────────────────────────────────
+- Todas las contraseñas se almacenan hasheadas con bcrypt
+- Los tokens JWT están firmados y verificados
+- Rate limiting para prevenir ataques de fuerza bruta
+- Helmet.js para headers de seguridad HTTP
+- CORS configurado según el entorno
+
+SINCRONIZACIÓN
+───────────────────────────────────────────────────────────────────────────────
+- El sistema usa timestamps para detectar cambios
+- Los conflictos se resuelven usando el timestamp más reciente
+- La sincronización es bidireccional (cliente ↔ servidor)
+- Se pueden sincronizar meses específicos, no todo el dataset
+
+RENDIMIENTO
+───────────────────────────────────────────────────────────────────────────────
+- Índices en MongoDB para consultas rápidas
+- Límite de 10MB para el body de las peticiones
+- Compresión de respuestas (si está configurada)
+- Rate limiting para proteger el servidor
+
+═══════════════════════════════════════════════════════════════════════════════
+                        FIN DE LA DOCUMENTACIÓN
+═══════════════════════════════════════════════════════════════════════════════

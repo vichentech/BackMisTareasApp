@@ -1,0 +1,17 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    EJEMPLOS DE USO - BackendMisPartes
+═══════════════════════════════════════════════════════════════════════════════
+
+Este documento contiene ejemplos prácticos de cómo usar cada endpoint del API.
+Los ejemplos están en formato cURL y JavaScript (fetch).
+
+═══════════════════════════════════════════════════════════════════════════════
+                        CONFIGURACIÓN INICIAL DEL SISTEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+EJEMPLO 1: Verificar si se necesita configuración inicial
+───────────────────────────────────────────────────────────────────────────────
+
+cURL:
+```bash
+curl -X GET http://localhost:3000/setup/status
