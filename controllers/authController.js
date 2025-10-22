@@ -333,6 +333,51 @@ class AuthController {
       next(error);
     }
   }
+
+  /**
+   * POST /auth/admin/users
+   * Crear nuevo usuario (solo admin)
+   */
+  async adminCreateUser(req, res, next) {
+    try {
+      const { username, password, role } = req.body;
+
+      // Validar que se enviaron los datos
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username y password son requeridos'
+        });
+      }
+
+      // Validar rol
+      if (role && !['user', 'admin'].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El rol debe ser "user" o "admin"'
+        });
+      }
+
+      // Crear usuario
+      const result = await authService.createUser(username, password, role || 'user');
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json({
+          success: false,
+          message: result.message
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Usuario creado con éxito.',
+        user: result.user
+      });
+    } catch (error) {
+      console.error('Error en adminCreateUser:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

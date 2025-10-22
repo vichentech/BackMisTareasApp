@@ -1,0 +1,114 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    VERIFICACIÓN DEL ENDPOINT POST /admin/users
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ IMPLEMENTACIÓN COMPLETADA
+
+1. RUTA REGISTRADA
+   Archivo: routes/adminRoutes.js (línea 13)
+   Código: router.post('/users', requireAdmin, validateCreateUser, authController.adminCreateUser);
+
+2. CONTROLADOR IMPLEMENTADO
+   Archivo: controllers/authController.js (líneas 337-380)
+   Método: adminCreateUser(req, res, next)
+
+3. MIDDLEWARE DE SEGURIDAD
+   - requireAdmin: Verifica que el usuario sea administrador
+   - validateCreateUser: Valida username, password y role
+
+4. DOCUMENTACIÓN ACTUALIZADA
+   - server.js: Endpoint listado en comentarios y en ruta 404
+   - Ejemplos_Uso_Endpoints.txt: Ejemplos de uso completos
+
+═══════════════════════════════════════════════════════════════════════════════
+                              CÓMO PROBAR EL ENDPOINT
+═══════════════════════════════════════════════════════════════════════════════
+
+PASO 1: Iniciar el servidor
+```bash
+npm start
+```
+
+PASO 2: Hacer login como administrador
+```bash
+curl -X POST http://localhost:3000/auth/login-admin \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"tu_password_admin"}'
+```
+
+Guarda el accessToken de la respuesta.
+
+PASO 3: Crear un nuevo usuario
+```bash
+curl -X POST http://localhost:3000/admin/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TU_TOKEN_AQUI" \
+  -d '{
+    "username": "testuser",
+    "password": "test123",
+    "role": "user"
+  }'
+```
+
+PASO 4: Verificar en el log del servidor
+El servidor debe mostrar:
+- La petición POST /admin/users
+- Status 201 si es exitoso
+- Status 409 si el usuario ya existe
+- Status 401/403 si no hay token o no es admin
+
+═══════════════════════════════════════════════════════════════════════════════
+                              RESPUESTAS ESPERADAS
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ ÉXITO (201 Created):
+{
+  "success": true,
+  "message": "Usuario creado con éxito.",
+  "user": {
+    "username": "testuser",
+    "role": "user"
+  }
+}
+
+❌ USUARIO YA EXISTE (409 Conflict):
+{
+  "success": false,
+  "message": "El nombre de usuario ya existe."
+}
+
+❌ SIN TOKEN (401 Unauthorized):
+{
+  "success": false,
+  "message": "No autorizado. Token no proporcionado."
+}
+
+❌ NO ES ADMIN (403 Forbidden):
+{
+  "success": false,
+  "message": "Acceso denegado. Se requieren permisos de administrador."
+}
+
+❌ DATOS INVÁLIDOS (400 Bad Request):
+{
+  "success": false,
+  "message": "Username y password son requeridos"
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+                              SCRIPT DE PRUEBA
+═══════════════════════════════════════════════════════════════════════════════
+
+Se ha creado el archivo: test-admin-create-user.js
+
+Para ejecutarlo:
+```bash
+node test-admin-create-user.js
+```
+
+Este script:
+1. Hace login como admin
+2. Crea un nuevo usuario
+3. Verifica que sin token falla correctamente
+
+═══════════════════════════════════════════════════════════════════════════════

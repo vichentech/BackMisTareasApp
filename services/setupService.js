@@ -70,26 +70,12 @@ class SetupService {
       errors.push('El nombre de usuario solo puede contener letras, números, guiones y guiones bajos');
     }
 
-    // Validar password con requisitos más estrictos para admin
     if (!password || password.length === 0) {
       errors.push('La contraseña es requerida');
-    } else if (password.length < 8) {
-      errors.push('La contraseña debe tener al menos 8 caracteres');
+    } else if (password.length < 3) {
+      errors.push('La contraseña debe tener al menos 3 caracteres');
     } else if (password.length > 100) {
       errors.push('La contraseña no puede exceder 100 caracteres');
-    } else {
-      // Verificar que contenga al menos una mayúscula
-      if (!/[A-Z]/.test(password)) {
-        errors.push('La contraseña debe contener al menos una letra mayúscula');
-      }
-      // Verificar que contenga al menos un número
-      if (!/[0-9]/.test(password)) {
-        errors.push('La contraseña debe contener al menos un número');
-      }
-      // Verificar que contenga al menos una minúscula
-      if (!/[a-z]/.test(password)) {
-        errors.push('La contraseña debe contener al menos una letra minúscula');
-      }
     }
 
     return {

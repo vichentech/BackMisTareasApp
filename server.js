@@ -9,6 +9,7 @@ const authRoutes = require('./routes/authRoutes');
 const configRoutes = require('./routes/configRoutes');
 const dataRoutes = require('./routes/dataRoutes');
 const setupRoutes = require('./routes/setupRoutes'); // NUEVO
+const adminRoutes = require('./routes/adminRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
 const syncController = require('./controllers/syncController');
 const requestLogger = require('./middleware/requestLogger');
@@ -154,37 +155,44 @@ app.use('/config', configRoutes);
  */
 app.use('/data', dataRoutes);
 
-// Ruta 404
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: 'Endpoint no encontrado',
-    availableEndpoints: [
-      'HEAD /',
-      'GET /status',
-      'GET /setup/status',
-      'POST /setup/create-admin',
-      'POST /sync/check',
-      'POST /sync/push',
-      'POST /sync/init-indexes',
-      'POST /auth/login',
-      'POST /auth/login-admin',
-      'POST /auth/refresh',
-      'POST /auth/verify',
-      'POST /auth/create-user',
-      'POST /auth/change-password',
-      'POST /auth/admin-change-password',
-      'POST /auth/init-db',
-      'GET /config/master-lists (requiere JWT)',
-      'POST /config/master-lists (requiere JWT admin)',
-      'POST /config/init-master-lists',
-      'GET /data/timestamps/:username (requiere JWT)',
-      'POST /data/months/:username (requiere JWT)',
-      'PUT /data/months/:username (requiere JWT)',
-      'GET /data/users (requiere JWT)'
-    ]
-  });
-});
+/**
+ * Rutas de administración (con JWT admin)
+ * POST /admin/users - Crear nuevo usuario (requiere JWT admin)
+ */
+app.use('/admin', adminRoutes);
+
+ // Ruta 404
+ app.use((req, res) => {
+   res.status(404).json({
+     success: false,
+     message: 'Endpoint no encontrado',
+     availableEndpoints: [
+       'HEAD /',
+       'GET /status',
+       'GET /setup/status',
+       'POST /setup/create-admin',
+       'POST /sync/check',
+       'POST /sync/push',
+       'POST /sync/init-indexes',
+       'POST /auth/login',
+       'POST /auth/login-admin',
+       'POST /auth/refresh',
+       'POST /auth/verify',
+       'POST /auth/create-user',
+       'POST /auth/change-password',
+       'POST /auth/admin-change-password',
+       'POST /auth/init-db',
+       'GET /config/master-lists (requiere JWT)',
+       'POST /config/master-lists (requiere JWT admin)',
+       'POST /config/init-master-lists',
+       'GET /data/timestamps/:username (requiere JWT)',
+       'POST /data/months/:username (requiere JWT)',
+       'PUT /data/months/:username (requiere JWT)',
+       'GET /data/users (requiere JWT)',
+       'POST /admin/users (requiere JWT admin)'
+     ]
+   });
+ });
 
 // Middleware de manejo de errores
 app.use(errorHandler);
