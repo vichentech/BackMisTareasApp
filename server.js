@@ -8,8 +8,9 @@ const syncRoutes = require('./routes/syncRoutes');
 const authRoutes = require('./routes/authRoutes');
 const configRoutes = require('./routes/configRoutes');
 const dataRoutes = require('./routes/dataRoutes');
-const setupRoutes = require('./routes/setupRoutes'); // NUEVO
+const setupRoutes = require('./routes/setupRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const listsRoutes = require('./routes/listsRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
 const syncController = require('./controllers/syncController');
 const requestLogger = require('./middleware/requestLogger');
@@ -156,6 +157,13 @@ app.use('/config', configRoutes);
 app.use('/data', dataRoutes);
 
 /**
+ * Rutas de listas personales (con JWT)
+ * GET /data/lists/:username - Obtener listas personales de un usuario (requiere JWT)
+ * POST /data/lists/:username - Actualizar listas personales de un usuario (requiere JWT)
+ */
+app.use('/data', listsRoutes);
+
+/**
  * Rutas de administración (con JWT admin)
  * POST /admin/users - Crear nuevo usuario (requiere JWT admin)
  */
@@ -189,6 +197,8 @@ app.use('/admin', adminRoutes);
        'POST /data/months/:username (requiere JWT)',
        'PUT /data/months/:username (requiere JWT)',
        'GET /data/users (requiere JWT)',
+       'GET /data/lists/:username (requiere JWT)',
+       'POST /data/lists/:username (requiere JWT)',
        'POST /admin/users (requiere JWT admin)'
      ]
    });
@@ -197,37 +207,61 @@ app.use('/admin', adminRoutes);
 // Middleware de manejo de errores
 app.use(errorHandler);
 
-// Inicio del servidor
+ // Inicio del servidor
 const server = app.listen(PORT, () => {
   console.log(`
-╔════════════════════════════════════════════╗
-║   🚀 Servidor de Sincronización Iniciado  ║
-╠════════════════════════════════════════════╣
-║   Puerto: ${PORT}                           
-║   Entorno: ${process.env.NODE_ENV || 'development'}          
-║   CORS: ${isDevelopment ? '⚠️  ABIERTO (Desarrollo)' : '🔒 RESTRINGIDO (Producción)'}
-║   Logging: ${isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO'}
-║   Auth: 🔐 JWT (${process.env.JWT_EXPIRES_IN || '24h'})
-╠════════════════════════════════════════════╣
-║   🔧 Endpoints de Configuración Inicial:   ║
-║   • GET  /setup/status                     ║
-║   • POST /setup/create-admin               ║
-║                                            ║
-║   📡 Endpoints de Sincronización:          ║
-║   • GET  /data/timestamps/:username (JWT)  ║
-║   • POST /data/months/:username (JWT)      ║
-║   • PUT  /data/months/:username (JWT)      ║
-║                                            ║
-║   ⚙️  Endpoints de Configuración:          ║
-║   • GET  /config/master-lists (JWT)        ║
-║   • POST /config/master-lists (JWT Admin)  ║
-║                                            ║
-║   🔐 Endpoints de Autenticación:           ║
-║   • POST /auth/login                       ║
-║   • POST /auth/login-admin                 ║
-║   • POST /auth/refresh                     ║
-║   • POST /auth/verify                      ║
-╚════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════╗
+║          🚀 Servidor de Sincronización Iniciado               ║
+╠═══════════════════════════════════════════════════════════════╣
+║   Puerto: ${PORT.toString().padEnd(52)}║
+║   Entorno: ${(process.env.NODE_ENV || 'development').padEnd(51)}║
+║   CORS: ${(isDevelopment ? '⚠️  ABIERTO (Desarrollo)' : '🔒 RESTRINGIDO (Producción)').padEnd(54)}║
+║   Logging: ${(isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO').padEnd(51)}║
+║   Auth: 🔐 JWT (${(process.env.JWT_EXPIRES_IN || '24h')})${' '.repeat(44 - (process.env.JWT_EXPIRES_IN || '24h').length)}║
+╠═══════════════════════════════════════════════════════════════╣
+║   📋 ENDPOINTS DISPONIBLES:                                   ║
+╠═══════════════════════════════════════════════════════════════╣
+║   🏥 Health Check:                                            ║
+║   • HEAD /                                                    ║
+║   • GET  /status                                              ║
+║                                                               ║
+║   🔧 Configuración Inicial (Público):                         ║
+║   • GET  /setup/status                                        ║
+║   • POST /setup/create-admin                                  ║
+║                                                               ║
+║   🔐 Autenticación:                                           ║
+║   • POST /auth/login                                          ║
+║   • POST /auth/login-admin                                    ║
+║   • POST /auth/refresh                                        ║
+║   • POST /auth/verify                                         ║
+║   • POST /auth/create-user                                    ║
+║   • POST /auth/change-password                                ║
+║   • POST /auth/admin-change-password                          ║
+║   • POST /auth/init-db                                        ║
+║                                                               ║
+║   📡 Sincronización:                                          ║
+║   • POST /sync/check                                          ║
+║   • POST /sync/push                                           ║
+║   • POST /sync/init-indexes                                   ║
+║                                                               ║
+║   📊 Datos (Requiere JWT):                                    ║
+║   • GET  /data/timestamps/:username                           ║
+║   • POST /data/months/:username                               ║
+║   • PUT  /data/months/:username                               ║
+║   • GET  /data/users                                          ║
+║                                                               ║
+║   📝 Listas Personales (Requiere JWT):                        ║
+║   • GET  /data/lists/:username                                ║
+║   • POST /data/lists/:username                                ║
+║                                                               ║
+║   ⚙️  Configuración (Requiere JWT):                           ║
+║   • GET  /config/master-lists                                 ║
+║   • POST /config/master-lists (Requiere Admin)                ║
+║   • POST /config/init-master-lists                            ║
+║                                                               ║
+║   👥 Administración (Requiere JWT Admin):                     ║
+║   • POST /admin/users                                         ║
+╚═══════════════════════════════════════════════════════════════╝
   `);
 });
 
