@@ -84,11 +84,29 @@ class MasterList {
             { id: uuidv4(), name: 'Furgoneta-02' },
             { id: uuidv4(), name: 'Camión-01' }
           ],
+          otherWorkTypes: [
+            { id: uuidv4(), name: 'Asuntos Propios' },
+            { id: uuidv4(), name: 'Visita Médica' },
+            { id: uuidv4(), name: 'Formación' },
+            { id: uuidv4(), name: 'Vacaciones' },
+            { id: uuidv4(), name: 'Baja Médica' }
+          ],
           updatedAt: new Date()
         };
 
         await collection.insertOne(defaultLists);
         return defaultLists;
+      }
+
+      // Si existe pero no tiene otherWorkTypes, agregarlo
+      if (!masterLists.otherWorkTypes) {
+        masterLists.otherWorkTypes = [
+          { id: uuidv4(), name: 'Asuntos Propios' },
+          { id: uuidv4(), name: 'Visita Médica' },
+          { id: uuidv4(), name: 'Formación' },
+          { id: uuidv4(), name: 'Vacaciones' },
+          { id: uuidv4(), name: 'Baja Médica' }
+        ];
       }
 
       return masterLists;
@@ -103,7 +121,7 @@ class MasterList {
   /**
    * Actualiza las listas maestras
    */
-  async updateMasterLists(projects, mainTasks, vehicles) {
+  async updateMasterLists(projects, mainTasks, vehicles, otherWorkTypes) {
     let client;
     try {
       const result = await this.getCollection();
@@ -115,6 +133,7 @@ class MasterList {
         projects: projects || [],
         mainTasks: mainTasks || [],
         vehicles: vehicles || [],
+        otherWorkTypes: otherWorkTypes || [],
         updatedAt: new Date()
       };
 
@@ -146,7 +165,6 @@ class MasterList {
       const result = await this.getCollection();
       client = result.client;
       const collection = result.collection;
-
       // Verificar si ya existe
       const existing = await collection.findOne({ _id: this.documentId });
       if (existing) {
@@ -158,6 +176,13 @@ class MasterList {
             projects: existing.projects || [],
             mainTasks: existing.mainTasks || [],
             vehicles: existing.vehicles || [],
+            otherWorkTypes: existing.otherWorkTypes || [
+              { id: uuidv4(), name: 'Asuntos Propios' },
+              { id: uuidv4(), name: 'Visita Médica' },
+              { id: uuidv4(), name: 'Formación' },
+              { id: uuidv4(), name: 'Vacaciones' },
+              { id: uuidv4(), name: 'Baja Médica' }
+            ],
             updatedAt: existing.updatedAt
           }
         };
@@ -184,6 +209,15 @@ class MasterList {
           { id: uuidv4(), name: 'Camión-01' },
           { id: uuidv4(), name: 'Camión-02' }
         ],
+        otherWorkTypes: [
+          { id: uuidv4(), name: 'Asuntos Propios' },
+          { id: uuidv4(), name: 'Visita Médica' },
+          { id: uuidv4(), name: 'Formación' },
+          { id: uuidv4(), name: 'Vacaciones' },
+          { id: uuidv4(), name: 'Baja Médica' },
+          { id: uuidv4(), name: 'Permiso' },
+          { id: uuidv4(), name: 'Teletrabajo' }
+        ],
         updatedAt: new Date()
       };
 
@@ -196,6 +230,7 @@ class MasterList {
           projects: defaultLists.projects,
           mainTasks: defaultLists.mainTasks,
           vehicles: defaultLists.vehicles,
+          otherWorkTypes: defaultLists.otherWorkTypes,
           updatedAt: defaultLists.updatedAt
         }
       };

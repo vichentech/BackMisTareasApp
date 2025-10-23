@@ -78,9 +78,30 @@ class ConfigService {
   }
 
   /**
+   * Valida un tipo de trabajo adicional
+   */
+  validateOtherWorkType(workType) {
+    const errors = [];
+
+    if (!workType.id || typeof workType.id !== 'string' || workType.id.trim().length === 0) {
+      errors.push('Cada tipo de trabajo debe tener un id válido');
+    }
+
+    if (!workType.name || typeof workType.name !== 'string' || workType.name.trim().length === 0) {
+      errors.push('Cada tipo de trabajo debe tener un name válido');
+    }
+
+    if (workType.name && workType.name.length > 100) {
+      errors.push('El name del tipo de trabajo no puede exceder 100 caracteres');
+    }
+
+    return errors;
+  }
+
+  /**
    * Valida un array de listas maestras (solo si tiene contenido)
    * @param {Array} items - Array a validar
-   * @param {string} type - Tipo de items ('projects', 'mainTasks', 'vehicles')
+   * @param {string} type - Tipo de items ('projects', 'mainTasks', 'vehicles', 'otherWorkTypes')
    * @returns {Object} Resultado de validación
    */
   validateArray(items, type) {
@@ -147,6 +168,20 @@ class ConfigService {
       if (duplicateIds.length > 0) {
         errors.push(`IDs de vehículos duplicados: ${duplicateIds.join(', ')}`);
       }
+    } else if (type === 'otherWorkTypes') {
+      items.forEach((workType, index) => {
+        const workTypeErrors = this.validateOtherWorkType(workType);
+        if (workTypeErrors.length > 0) {
+          errors.push(`Tipo de trabajo ${index + 1}: ${workTypeErrors.join(', ')}`);
+        }
+      });
+
+      // Verificar IDs únicos
+      const ids = items.map(w => w.id);
+      const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+      if (duplicateIds.length > 0) {
+        errors.push(`IDs de tipos de trabajo duplicados: ${duplicateIds.join(', ')}`);
+      }
     }
 
     return {
@@ -179,6 +214,11 @@ class ConfigService {
         id: v.id.trim(),
         name: v.name.trim()
       }));
+    } else if (type === 'otherWorkTypes') {
+      return items.map(w => ({
+        id: w.id.trim(),
+        name: w.name.trim()
+      }));
     }
 
     return [];
@@ -196,6 +236,7 @@ class ConfigService {
         projects: masterLists.projects,
         mainTasks: masterLists.mainTasks,
         vehicles: masterLists.vehicles,
+        otherWorkTypes: masterLists.otherWorkTypes,
         updatedAt: masterLists.updatedAt
       };
     } catch (error) {
@@ -208,7 +249,7 @@ class ConfigService {
    * Actualiza las listas maestras (solo admin)
    * Soporta actualizaciones parciales - solo actualiza los arrays que tienen contenido
    */
-  async updateMasterLists(projects, mainTasks, vehicles) {
+  async updateMasterLists(projects, mainTasks, vehicles, otherWorkTypes) {
     try {
       // Obtener listas actuales
       const currentLists = await MasterList.getMasterLists();
@@ -217,6 +258,7 @@ class ConfigService {
       const cleanedProjects = this.cleanArray(projects, 'projects');
       const cleanedMainTasks = this.cleanArray(mainTasks, 'mainTasks');
       const cleanedVehicles = this.cleanArray(vehicles, 'vehicles');
+      const cleanedOtherWorkTypes = this.cleanArray(otherWorkTypes, 'otherWorkTypes');
 
       // Validar solo los arrays que tienen contenido
       const allErrors = [];
@@ -236,6 +278,11 @@ class ConfigService {
         allErrors.push(...vehiclesValidation.errors);
       }
 
+      const otherWorkTypesValidation = this.validateArray(cleanedOtherWorkTypes, 'otherWorkTypes');
+      if (!otherWorkTypesValidation.isValid) {
+        allErrors.push(...otherWorkTypesValidation.errors);
+      }
+
       if (allErrors.length > 0) {
         return {
           success: false,
@@ -248,19 +295,22 @@ class ConfigService {
       const finalProjects = cleanedProjects.length > 0 ? cleanedProjects : currentLists.projects;
       const finalMainTasks = cleanedMainTasks.length > 0 ? cleanedMainTasks : currentLists.mainTasks;
       const finalVehicles = cleanedVehicles.length > 0 ? cleanedVehicles : currentLists.vehicles;
+      const finalOtherWorkTypes = cleanedOtherWorkTypes.length > 0 ? cleanedOtherWorkTypes : currentLists.otherWorkTypes;
 
       // Log de lo que se está actualizando
       const updates = [];
       if (cleanedProjects.length > 0) updates.push(`projects (${cleanedProjects.length})`);
       if (cleanedMainTasks.length > 0) updates.push(`mainTasks (${cleanedMainTasks.length})`);
       if (cleanedVehicles.length > 0) updates.push(`vehicles (${cleanedVehicles.length})`);
+      if (cleanedOtherWorkTypes.length > 0) updates.push(`otherWorkTypes (${cleanedOtherWorkTypes.length})`);
       console.log(`[ConfigService] Actualizando: ${updates.join(', ')}`);
 
       // Actualizar en la base de datos
       const result = await MasterList.updateMasterLists(
         finalProjects,
         finalMainTasks,
-        finalVehicles
+        finalVehicles,
+        finalOtherWorkTypes
       );
 
       if (!result.success) {
@@ -279,6 +329,7 @@ class ConfigService {
           projects: result.data.projects,
           mainTasks: result.data.mainTasks,
           vehicles: result.data.vehicles,
+          otherWorkTypes: result.data.otherWorkTypes,
           updatedAt: result.data.updatedAt
         }
       };
