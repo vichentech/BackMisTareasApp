@@ -99,3 +99,144 @@ Respuesta de error (403 - Sin permisos):
   "message": "Acceso denegado. Se requieren permisos de administrador."
 }
 ```
+
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                    EJEMPLO: SINCRONIZACIÓN MASIVA DE USUARIOS
+═══════════════════════════════════════════════════════════════════════════════
+
+Endpoint: POST /admin/users/sync
+Descripción: Sincronizar datos de múltiples usuarios a la vez (solo admin)
+
+PASO 1: Obtener token de administrador
+───────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost:3000/auth/login-admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'
+
+Respuesta:
+{
+  "success": true,
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "username": "admin",
+    "role": "admin"
+  }
+}
+
+
+PASO 2: Sincronizar múltiples usuarios
+───────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost:3000/admin/users/sync \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d '{
+    "syncRequests": [
+      {
+        "username": "Vicente",
+        "localTimestamps": {
+          "2024-06": "2024-06-30T18:00:00.000Z",
+          "2024-07": "2024-07-15T09:00:00.000Z"
+        }
+      },
+      {
+        "username": "Alfredo",
+        "localTimestamps": {
+          "2024-07": "2024-07-20T12:00:00.000Z"
+        }
+      }
+    ]
+  }'
+
+Respuesta exitosa:
+{
+  "success": true,
+  "serverTimestamps": {
+    "Vicente": {
+      "2024-06": "2024-06-30T18:00:00.000Z",
+      "2024-07": "2024-07-28T11:00:00.000Z"
+    },
+    "Alfredo": {
+      "2024-07": "2024-07-20T12:00:00.000Z",
+      "2024-05": "2024-05-31T17:00:00.000Z"
+    }
+  },
+  "updatedData": [
+    {
+      "username": "Vicente",
+      "yearMonth": "2024-07",
+      "updatedAt": "2024-07-28T11:00:00.000Z",
+      "monthData": {
+        "16": {
+          "d": "2024-07-16",
+          "s": "work",
+          "h": 8,
+          "eh": 1,
+          "os": false,
+          "t": [
+            {
+              "pid": "PRJ001",
+              "pnr": "2024-001",
+              "pnm": "Proyecto Alpha",
+              "tid": "TSK001",
+              "tn": "Desarrollo",
+              "h": 8
+            }
+          ],
+          "v": "ABC-123",
+          "km": 150,
+          "dt": 12.5
+        }
+      }
+    }
+  ]
+}
+
+INTERPRETACIÓN DE LA RESPUESTA:
+───────────────────────────────────────────────────────────────────────────────
+- serverTimestamps: Contiene todos los timestamps del servidor para cada usuario
+  * Vicente tiene datos de junio y julio
+  * Alfredo tiene datos de mayo y julio
+
+- updatedData: Contiene solo los meses que necesitan actualizarse
+  * Solo julio de Vicente necesita actualizarse (servidor más reciente)
+  * Alfredo está sincronizado, no hay datos nuevos para él
+
+CASOS DE USO:
+───────────────────────────────────────────────────────────────────────────────
+1. Sincronización inicial: El cliente no tiene timestamps locales
+   → Enviar localTimestamps vacío {} para cada usuario
+   → El servidor devolverá todos los meses disponibles
+
+2. Sincronización incremental: El cliente tiene algunos timestamps
+   → Enviar los timestamps que tiene almacenados
+   → El servidor solo devolverá los meses actualizados
+
+3. Verificación de sincronización: Comprobar si hay actualizaciones
+   → Comparar serverTimestamps con los timestamps locales
+   → Si son iguales, no hay nada que actualizar
+
+ERRORES COMUNES:
+───────────────────────────────────────────────────────────────────────────────
+Error 400 - Array vacío:
+{
+  "success": false,
+  "message": "El array syncRequests no puede estar vacío"
+}
+
+Error 400 - Formato inválido:
+{
+  "success": false,
+  "message": "El usuario Vicente debe tener localTimestamps como objeto"
+}
+
+Error 403 - No es administrador:
+{
+  "success": false,
+  "message": "Acceso denegado. Se requieren permisos de administrador."
+}

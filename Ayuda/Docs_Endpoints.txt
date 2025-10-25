@@ -815,6 +815,175 @@ Campos de respuesta:
   - users: Array de usuarios (sin contraseñas)
 
 
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ENDPOINTS DE ADMINISTRACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+Todos los endpoints de administración requieren autenticación con JWT y rol de
+administrador. El token debe incluirse en el header Authorization.
+
+
+18. POST /admin/users
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Crear un nuevo usuario (solo administradores)
+Autenticación: Requerida (JWT con rol admin)
+Método: POST
+
+Headers:
+  Authorization: Bearer <token_admin>
+
+Body (JSON):
+{
+  "username": "nuevo_usuario",
+  "password": "contraseña_segura",
+  "role": "user"
+}
+
+Campos requeridos:
+  - username: Nombre de usuario (string, único)
+  - password: Contraseña (string, mínimo 6 caracteres)
+  - role: Rol del usuario ("user" o "admin")
+
+Respuesta exitosa (201):
+{
+  "success": true,
+  "message": "Usuario creado exitosamente",
+  "user": {
+    "username": "nuevo_usuario",
+    "role": "user"
+  }
+}
+
+Respuesta de error (409):
+{
+  "success": false,
+  "message": "El usuario ya existe"
+}
+
+Respuesta de error (403):
+{
+  "success": false,
+  "message": "Acceso denegado. Se requieren permisos de administrador."
+}
+
+Endpoints que requieren rol admin:
+  - POST /config/master-lists
+  - POST /auth/admin-change-password
+  - POST /admin/users
+  - POST /admin/users/sync
+
+
+19. POST /admin/users/sync
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Sincronización masiva de múltiples usuarios (solo administradores)
+Autenticación: Requerida (JWT con rol admin)
+Método: POST
+
+Este endpoint permite al administrador sincronizar eficientemente los datos de
+múltiples usuarios a la vez. El frontend envía una lista de usuarios y las
+marcas de tiempo (timestamps) de los datos que tiene almacenados localmente
+para cada uno. El backend compara estas marcas de tiempo con las suyas y
+devuelve únicamente los datos de los meses que han sido actualizados en el
+servidor.
+
+Headers:
+  Authorization: Bearer <token_admin>
+
+Body (JSON):
+{
+  "syncRequests": [
+    {
+      "username": "Vicente",
+      "localTimestamps": {
+        "2024-06": "2024-06-30T18:00:00.000Z",
+        "2024-07": "2024-07-15T09:00:00.000Z"
+      }
+    },
+    {
+      "username": "Alfredo",
+      "localTimestamps": {
+        "2024-07": "2024-07-20T12:00:00.000Z"
+      }
+    }
+  ]
+}
+
+Campos requeridos:
+  - syncRequests: Array de objetos de sincronización
+    - username: Nombre del usuario a sincronizar (string)
+    - localTimestamps: Objeto con timestamps locales
+      - Clave: Mes en formato YYYY-MM
+      - Valor: Timestamp ISO 8601 de última actualización
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "serverTimestamps": {
+    "Vicente": {
+      "2024-06": "2024-06-30T18:00:00.000Z",
+      "2024-07": "2024-07-28T11:00:00.000Z"
+    },
+    "Alfredo": {
+      "2024-07": "2024-07-20T12:00:00.000Z",
+      "2024-05": "2024-05-31T17:00:00.000Z"
+    }
+  },
+  "updatedData": [
+    {
+      "username": "Vicente",
+      "yearMonth": "2024-07",
+      "updatedAt": "2024-07-28T11:00:00.000Z",
+      "monthData": {
+        "16": {
+          "d": "2024-07-16",
+          "s": "work",
+          "h": 8,
+          "eh": 1,
+          "os": false,
+          "t": [],
+          "v": "ABC-123",
+          "km": 150,
+          "dt": 12.5
+        }
+      }
+    }
+  ]
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - serverTimestamps: Objeto con timestamps del servidor para cada usuario
+    - Clave: username
+    - Valor: Objeto con timestamps (YYYY-MM: ISO_TIMESTAMP)
+  - updatedData: Array con datos completos de meses actualizados
+    - username: Nombre del usuario
+    - yearMonth: Mes en formato YYYY-MM
+    - updatedAt: Timestamp de última actualización
+    - monthData: Objeto con datos de cada día del mes
+
+Lógica de negocio:
+  - Para cada usuario, compara timestamps locales vs servidor
+  - Si el timestamp del servidor es más reciente, incluye el mes en updatedData
+  - Si el mes no existe en el cliente, lo incluye en updatedData
+  - Siempre devuelve el mapa completo de timestamps del servidor
+
+Respuesta de error (400):
+{
+  "success": false,
+  "message": "El campo syncRequests es requerido y debe ser un array"
+}
+
+Respuesta de error (403):
+{
+  "success": false,
+  "message": "Acceso denegado. Se requieren permisos de administrador."
+}
+
+
+
+
+
 ═══════════════════════════════════════════════════════════════════════════════
                         AUTENTICACIÓN CON JWT
 ═══════════════════════════════════════════════════════════════════════════════

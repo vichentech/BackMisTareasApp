@@ -1,15 +1,13 @@
+
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const dataController = require('../controllers/dataController');
 const { validateCreateUser } = require('../middleware/authValidation');
 const { requireAdmin } = require('../middleware/authMiddleware');
 
-/**
- * Rutas de Administración
- * Todas las rutas requieren autenticación de administrador
- */
-
-// POST /admin/users - Crear nuevo usuario (solo admin)
 router.post('/users', requireAdmin, validateCreateUser, authController.adminCreateUser);
+
+router.post('/users/sync', requireAdmin, dataController.adminBulkSync);
 
 module.exports = router;

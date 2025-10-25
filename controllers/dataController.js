@@ -175,6 +175,78 @@ class DataController {
       next(error);
     }
   }
+
+
+  /**
+   * POST /admin/users/sync
+   * Sincronización masiva de múltiples usuarios (solo admin)
+   * 
+   * Body: { 
+   *   "syncRequests": [
+   *     {
+   *       "username": "Vicente",
+   *       "localTimestamps": {
+   *         "2024-06": "2024-06-30T18:00:00.000Z",
+   *         "2024-07": "2024-07-15T09:00:00.000Z"
+   *       }
+   *     }
+   *   ]
+   * }
+   */
+  async adminBulkSync(req, res, next) {
+    try {
+      const { syncRequests } = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[ADMIN_BULK_SYNC] Solicitud de sincronización masiva`);
+      console.log(`[ADMIN_BULK_SYNC] Usuarios a sincronizar: ${syncRequests ? syncRequests.length : 0}`);
+
+      if (!syncRequests || !Array.isArray(syncRequests)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El campo syncRequests es requerido y debe ser un array'
+        });
+      }
+
+      if (syncRequests.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El array syncRequests no puede estar vacío'
+        });
+      }
+
+      for (const request of syncRequests) {
+        if (!request.username) {
+          return res.status(400).json({
+            success: false,
+            message: 'Cada elemento de syncRequests debe tener un username'
+          });
+        }
+        if (!request.localTimestamps || typeof request.localTimestamps !== 'object') {
+          return res.status(400).json({
+            success: false,
+            message: `El usuario ${request.username} debe tener localTimestamps como objeto`
+          });
+        }
+      }
+
+      const result = await dataService.adminBulkSync(syncRequests, db, collection);
+
+      console.log(`[ADMIN_BULK_SYNC] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      console.log(`[ADMIN_BULK_SYNC] Usuarios procesados: ${Object.keys(result.serverTimestamps || {}).length}`);
+      console.log(`[ADMIN_BULK_SYNC] Meses actualizados: ${result.updatedData ? result.updatedData.length : 0}\n`);
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        serverTimestamps: result.serverTimestamps || {},
+        updatedData: result.updatedData || []
+      });
+    } catch (error) {
+      console.error('[ADMIN_BULK_SYNC] Error:', error);
+      next(error);
+    }
+  }
+
 }
 
 module.exports = new DataController();

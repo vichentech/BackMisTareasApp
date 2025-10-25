@@ -166,6 +166,7 @@ app.use('/data', listsRoutes);
 /**
  * Rutas de administración (con JWT admin)
  * POST /admin/users - Crear nuevo usuario (requiere JWT admin)
+ * POST /admin/users/sync - Sincronización masiva de usuarios (requiere JWT admin)
  */
 app.use('/admin', adminRoutes);
 
@@ -199,7 +200,8 @@ app.use('/admin', adminRoutes);
        'GET /data/users (requiere JWT)',
        'GET /data/lists/:username (requiere JWT)',
        'POST /data/lists/:username (requiere JWT)',
-       'POST /admin/users (requiere JWT admin)'
+       'POST /admin/users (requiere JWT admin)',
+       'POST /admin/users/sync (requiere JWT admin)'
      ]
    });
  });
@@ -260,7 +262,8 @@ const server = app.listen(PORT, () => {
 ║   • POST /config/init-master-lists                            ║
 ║                                                               ║
 ║   👥 Administración (Requiere JWT Admin):                     ║
-║   • POST /admin/users                                         ║
+║   • POST /admin/users                                         ║   
+║   • POST /admin/users/sync                                    ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
 });

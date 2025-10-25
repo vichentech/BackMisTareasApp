@@ -227,6 +227,89 @@ class DataService {
       throw error;
     }
   }
+
+
+/**
+   * Sincronización masiva de múltiples usuarios (solo admin)
+   */
+  async adminBulkSync(syncRequests, dbName = null, collectionName = null) {
+    try {
+      const targetDb = dbName || process.env.MONGO_DB_NAME || 'timeTrackingDB';
+      const targetCollection = collectionName || process.env.MONGO_COLLECTION_NAME || 'monthlyData';
+
+      console.log(`[DataService] Sincronización masiva para ${syncRequests.length} usuarios`);
+      console.log(`[DataService] DB: ${targetDb}, Collection: ${targetCollection}`);
+
+      const serverTimestamps = {};
+      const updatedData = [];
+
+      for (const request of syncRequests) {
+        const { username, localTimestamps } = request;
+
+        console.log(`[DataService] Procesando usuario: ${username}`);
+
+        const timestampsResult = await UserData.getTimestamps(username, targetDb, targetCollection);
+
+        if (!timestampsResult.success) {
+          console.log(`[DataService] Error al obtener timestamps para ${username}`);
+          serverTimestamps[username] = {};
+          continue;
+        }
+
+        serverTimestamps[username] = timestampsResult.timestamps || {};
+
+        const monthsToFetch = [];
+        for (const [yearMonth, serverTimestamp] of Object.entries(serverTimestamps[username])) {
+          const localTimestamp = localTimestamps[yearMonth];
+
+          if (!localTimestamp) {
+            monthsToFetch.push(yearMonth);
+            console.log(`[DataService] ${username} - ${yearMonth}: No existe en cliente, se descargará`);
+          } else {
+            const serverDate = new Date(serverTimestamp);
+            const localDate = new Date(localTimestamp);
+
+            if (serverDate > localDate) {
+              monthsToFetch.push(yearMonth);
+              console.log(`[DataService] ${username} - ${yearMonth}: Servidor más reciente (${serverTimestamp} > ${localTimestamp})`);
+            }
+          }
+        }
+
+        if (monthsToFetch.length > 0) {
+          console.log(`[DataService] Obteniendo ${monthsToFetch.length} meses para ${username}`);
+          const monthsDataResult = await UserData.getMonthsData(username, monthsToFetch, targetDb, targetCollection);
+
+          if (monthsDataResult.success && monthsDataResult.data) {
+            updatedData.push(...monthsDataResult.data);
+          }
+        } else {
+          console.log(`[DataService] ${username} está sincronizado, no hay datos nuevos`);
+        }
+      }
+
+      console.log(`[DataService] Sincronización masiva completada`);
+      console.log(`[DataService] Total meses a actualizar: ${updatedData.length}`);
+
+      return {
+        success: true,
+        serverTimestamps,
+        updatedData,
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('[DataService] Error en sincronización masiva:', error);
+      return {
+        success: false,
+        message: 'Error en sincronización masiva: ' + error.message,
+        serverTimestamps: {},
+        updatedData: [],
+        statusCode: 500
+      };
+    }
+  }
+
+
 }
 
 module.exports = new DataService();
