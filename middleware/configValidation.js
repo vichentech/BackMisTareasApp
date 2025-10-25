@@ -1,23 +1,12 @@
 const { body, validationResult } = require('express-validator');
 
-/**
- * Middleware de validación para configuración
- * Permite actualizaciones parciales de listas maestras
- */
-
-/**
- * Validación para actualizar listas maestras
- * Permite arrays vacíos - solo actualiza los arrays que tienen contenido
- */
 const validateUpdateMasterLists = [
-  // Validar que projects existe y es un array (puede estar vacío)
   body('projects')
     .exists()
     .withMessage('projects es requerido')
     .isArray()
     .withMessage('projects debe ser un array'),
   
-  // Si projects tiene elementos, validarlos
   body('projects.*.id')
     .if(body('projects').isArray({ min: 1 }))
     .isString()
@@ -43,14 +32,12 @@ const validateUpdateMasterLists = [
     .isLength({ max: 200 })
     .withMessage('El pnm no puede exceder 200 caracteres'),
 
-  // Validar que mainTasks existe y es un array (puede estar vacío)
   body('mainTasks')
     .exists()
     .withMessage('mainTasks es requerido')
     .isArray()
     .withMessage('mainTasks debe ser un array'),
   
-  // Si mainTasks tiene elementos, validarlos
   body('mainTasks.*.id')
     .if(body('mainTasks').isArray({ min: 1 }))
     .isString()
@@ -67,14 +54,12 @@ const validateUpdateMasterLists = [
     .isLength({ max: 200 })
     .withMessage('El name de la tarea no puede exceder 200 caracteres'),
 
-  // Validar que vehicles existe y es un array (puede estar vacío)
   body('vehicles')
     .exists()
     .withMessage('vehicles es requerido')
     .isArray()
     .withMessage('vehicles debe ser un array'),
   
-  // Si vehicles tiene elementos, validarlos
   body('vehicles.*.id')
     .if(body('vehicles').isArray({ min: 1 }))
     .isString()
@@ -90,6 +75,28 @@ const validateUpdateMasterLists = [
     .withMessage('Cada vehículo debe tener un name válido')
     .isLength({ max: 100 })
     .withMessage('El name del vehículo no puede exceder 100 caracteres'),
+
+  body('otherWorkTypes')
+    .exists()
+    .withMessage('otherWorkTypes es requerido')
+    .isArray()
+    .withMessage('otherWorkTypes debe ser un array'),
+  
+  body('otherWorkTypes.*.id')
+    .if(body('otherWorkTypes').isArray({ min: 1 }))
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Cada tipo de trabajo debe tener un id válido'),
+
+  body('otherWorkTypes.*.name')
+    .if(body('otherWorkTypes').isArray({ min: 1 }))
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Cada tipo de trabajo debe tener un name válido')
+    .isLength({ max: 100 })
+    .withMessage('El name del tipo de trabajo no puede exceder 100 caracteres'),
 
   (req, res, next) => {
     const errors = validationResult(req);

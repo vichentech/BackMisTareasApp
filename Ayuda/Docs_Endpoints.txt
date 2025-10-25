@@ -511,85 +511,141 @@ Uso: Llamar una vez al configurar el sistema para optimizar las consultas
                         ENDPOINTS DE CONFIGURACIÓN
 ═══════════════════════════════════════════════════════════════════════════════
 
-16. GET /config/master-lists
+Estos endpoints gestionan las listas maestras compartidas entre todos los usuarios.
+Requieren autenticación con JWT. Las operaciones de escritura requieren rol admin.
+
+
+10. GET /config/master-lists
 ───────────────────────────────────────────────────────────────────────────────
-Descripción: Obtener listas maestras (proyectos, tareas, vehículos)
-Autenticación: JWT requerido
+Descripción: Obtener la configuración completa de todas las listas maestras
+Autenticación: Requerida (JWT)
 Método: GET
 
 Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  Authorization: Bearer <token>
 
 Respuesta exitosa (200):
 {
-  "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
-  "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
-  "vehicles": ["Vehículo 1", "Vehículo 2"],
-  "updatedAt": "2024-01-15T10:30:00.000Z"
+  "success": true,
+  "projects": [
+    { "id": "uuid-proj-1", "pnr": "P-001", "pnm": "Proyecto Alpha" },
+    { "id": "uuid-proj-2", "pnr": "P-002", "pnm": "Proyecto Beta" }
+  ],
+  "mainTasks": [
+    { "id": "uuid-task-1", "name": "Instalación Eléctrica" },
+    { "id": "uuid-task-2", "name": "Mantenimiento Preventivo" }
+  ],
+  "vehicles": [
+    { "id": "uuid-veh-1", "name": "Furgoneta-01" },
+    { "id": "uuid-veh-2", "name": "Coche-Taller-05" }
+  ],
+  "otherWorkTypes": [
+    { "id": "uuid-leave-1", "name": "Visita Médica" },
+    { "id": "uuid-leave-2", "name": "Formación Interna" }
+  ],
+  "updatedAt": "2024-07-30T10:00:00.000Z"
 }
 
 Campos de respuesta:
-  - projects: Array de nombres de proyectos
+  - success: Indica si la operación fue exitosa
+  - projects: Array de proyectos
+    - id: Identificador único (UUID)
+    - pnr: Número de proyecto/obra
+    - pnm: Nombre del proyecto/obra
   - mainTasks: Array de tareas principales
+    - id: Identificador único (UUID)
+    - name: Nombre de la tarea
   - vehicles: Array de vehículos
-  - updatedAt: Timestamp de última actualización
+    - id: Identificador único (UUID)
+    - name: Nombre del vehículo
+  - otherWorkTypes: Array de otros tipos de ausencias/trabajos
+    - id: Identificador único (UUID)
+    - name: Nombre del tipo
+  - updatedAt: Fecha y hora de última actualización (ISO 8601)
 
-Uso: Obtener las listas maestras para usar en la aplicación
 
-
-17. POST /config/master-lists
+11. POST /config/master-lists
 ───────────────────────────────────────────────────────────────────────────────
-Descripción: Actualizar listas maestras (solo administradores)
-Autenticación: JWT con rol admin requerido
+Descripción: Reemplazar completamente todas las listas maestras (solo admin)
+Autenticación: Requerida (JWT con rol admin)
 Método: POST
 
+IMPORTANTE: Este endpoint reemplaza COMPLETAMENTE todas las listas. El frontend
+debe enviar siempre las cuatro listas completas, incluso si solo una ha cambiado.
+
 Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  Authorization: Bearer <token_admin>
 
 Body (JSON):
 {
-  "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
-  "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
-  "vehicles": ["Vehículo 1", "Vehículo 2"]
+  "projects": [
+    { "id": "uuid-proj-1", "pnr": "P-001", "pnm": "Proyecto Alpha (Actualizado)" }
+  ],
+  "mainTasks": [
+    { "id": "uuid-task-1", "name": "Instalación Eléctrica" }
+  ],
+  "vehicles": [
+    { "id": "uuid-veh-1", "name": "Furgoneta-01" }
+  ],
+  "otherWorkTypes": [
+    { "id": "uuid-leave-1", "name": "Visita Médica" },
+    { "id": "uuid-leave-3", "name": "Asuntos Propios" }
+  ]
 }
 
 Campos requeridos:
   - projects: Array de proyectos (puede estar vacío)
   - mainTasks: Array de tareas (puede estar vacío)
   - vehicles: Array de vehículos (puede estar vacío)
+  - otherWorkTypes: Array de otros tipos (puede estar vacío)
 
-Nota: Al menos uno de los arrays debe tener contenido. Solo se actualizan
-los arrays que tienen elementos.
+Validaciones:
+  - Todos los campos deben ser arrays
+  - Cada proyecto debe tener: id, pnr (max 50 chars), pnm (max 200 chars)
+  - Cada tarea/vehículo/tipo debe tener: id, name (max 200/100/100 chars)
+  - Los IDs deben ser únicos dentro de cada lista
+  - Los PNRs deben ser únicos
+  - Máximo 500 elementos por lista
 
 Respuesta exitosa (200):
 {
   "success": true,
-  "message": "Listas maestras actualizadas correctamente",
+  "message": "Listas maestras actualizadas correctamente.",
   "data": {
-    "projects": ["Proyecto A", "Proyecto B", "Proyecto C"],
-    "mainTasks": ["Tarea 1", "Tarea 2", "Tarea 3"],
-    "vehicles": ["Vehículo 1", "Vehículo 2"],
-    "updatedAt": "2024-01-15T10:30:00.000Z"
+    "projects": [
+      { "id": "uuid-proj-1", "pnr": "P-001", "pnm": "Proyecto Alpha (Actualizado)" }
+    ],
+    "mainTasks": [
+      { "id": "uuid-task-1", "name": "Instalación Eléctrica" }
+    ],
+    "vehicles": [
+      { "id": "uuid-veh-1", "name": "Furgoneta-01" }
+    ],
+    "otherWorkTypes": [
+      { "id": "uuid-leave-1", "name": "Visita Médica" },
+      { "id": "uuid-leave-3", "name": "Asuntos Propios" }
+    ],
+    "updatedAt": "2024-07-30T12:30:00.000Z"
   }
 }
 
 Respuesta de error (400):
 {
   "success": false,
-  "message": "Al menos uno de los arrays debe tener contenido"
+  "message": "Debes enviar projects, mainTasks, vehicles y otherWorkTypes"
 }
 
 Respuesta de error (403):
 {
   "success": false,
-  "message": "Acceso denegado. Se requiere rol de administrador"
+  "message": "Acceso denegado. Se requieren permisos de administrador."
 }
 
 
-18. POST /config/init-master-lists
+12. POST /config/init-master-lists
 ───────────────────────────────────────────────────────────────────────────────
 Descripción: Inicializar listas maestras con valores por defecto
-Autenticación: No especificada
+Autenticación: No requerida (solo funciona si no existen listas)
 Método: POST
 
 Respuesta exitosa (200):
@@ -600,12 +656,143 @@ Respuesta exitosa (200):
     "projects": [],
     "mainTasks": [],
     "vehicles": [],
-    "updatedAt": "2024-01-15T10:30:00.000Z"
+    "otherWorkTypes": [],
+    "updatedAt": "2024-07-30T10:00:00.000Z"
   }
 }
 
-Uso: Configuración inicial del sistema
+// ============================================
+// 7. ACTUALIZAR Ayuda/Ejemplos_Uso_Endpoints.txt
+// Buscar la sección de configuración y reemplazar
+// ============================================
 
+═══════════════════════════════════════════════════════════════════════════════
+                    EJEMPLO: GESTIÓN DE LISTAS MAESTRAS
+═══════════════════════════════════════════════════════════════════════════════
+
+Endpoint GET: /config/master-lists
+Endpoint POST: /config/master-lists
+Descripción: Obtener y actualizar las listas maestras compartidas
+
+PASO 1: Obtener token de administrador
+───────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost:3000/auth/login-admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'
+
+Respuesta:
+{
+  "success": true,
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "username": "admin",
+    "role": "admin"
+  }
+}
+
+
+PASO 2: Obtener listas maestras actuales
+───────────────────────────────────────────────────────────────────────────────
+curl -X GET http://localhost:3000/config/master-lists \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+Respuesta:
+{
+  "success": true,
+  "projects": [
+    { "id": "uuid-1", "pnr": "P-001", "pnm": "Proyecto Alpha" }
+  ],
+  "mainTasks": [
+    { "id": "uuid-2", "name": "Instalación" }
+  ],
+  "vehicles": [
+    { "id": "uuid-3", "name": "Furgoneta-01" }
+  ],
+  "otherWorkTypes": [
+    { "id": "uuid-4", "name": "Visita Médica" }
+  ],
+  "updatedAt": "2024-07-30T10:00:00.000Z"
+}
+
+
+PASO 3: Actualizar listas maestras (reemplazo completo)
+───────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost:3000/config/master-lists \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d '{
+    "projects": [
+      { "id": "uuid-1", "pnr": "P-001", "pnm": "Proyecto Alpha Actualizado" },
+      { "id": "uuid-5", "pnr": "P-002", "pnm": "Proyecto Beta" }
+    ],
+    "mainTasks": [
+      { "id": "uuid-2", "name": "Instalación" },
+      { "id": "uuid-6", "name": "Mantenimiento" }
+    ],
+    "vehicles": [
+      { "id": "uuid-3", "name": "Furgoneta-01" }
+    ],
+    "otherWorkTypes": [
+      { "id": "uuid-4", "name": "Visita Médica" },
+      { "id": "uuid-7", "name": "Formación" }
+    ]
+  }'
+
+Respuesta exitosa:
+{
+  "success": true,
+  "message": "Listas maestras actualizadas correctamente.",
+  "data": {
+    "projects": [
+      { "id": "uuid-1", "pnr": "P-001", "pnm": "Proyecto Alpha Actualizado" },
+      { "id": "uuid-5", "pnr": "P-002", "pnm": "Proyecto Beta" }
+    ],
+    "mainTasks": [
+      { "id": "uuid-2", "name": "Instalación" },
+      { "id": "uuid-6", "name": "Mantenimiento" }
+    ],
+    "vehicles": [
+      { "id": "uuid-3", "name": "Furgoneta-01" }
+    ],
+    "otherWorkTypes": [
+      { "id": "uuid-4", "name": "Visita Médica" },
+      { "id": "uuid-7", "name": "Formación" }
+    ],
+    "updatedAt": "2024-07-30T12:30:00.000Z"
+  }
+}
+
+IMPORTANTE:
+───────────────────────────────────────────────────────────────────────────────
+- El POST reemplaza COMPLETAMENTE todas las listas
+- Siempre debes enviar las 4 listas (projects, mainTasks, vehicles, otherWorkTypes)
+- Si quieres vaciar una lista, envía un array vacío []
+- Los arrays vacíos son válidos
+- El backend genera automáticamente el nuevo updatedAt
+
+ERRORES COMUNES:
+───────────────────────────────────────────────────────────────────────────────
+Error 400 - Falta un campo:
+{
+  "success": false,
+  "message": "Debes enviar projects, mainTasks, vehicles y otherWorkTypes"
+}
+
+Error 400 - IDs duplicados:
+{
+  "success": false,
+  "message": "IDs de proyectos duplicados: uuid-1"
+}
+
+Error 403 - No es administrador:
+{
+  "success": false,
+  "message": "Acceso denegado. Se requieren permisos de administrador."
+}
 
 ═══════════════════════════════════════════════════════════════════════════════
                             ENDPOINTS DE DATOS
