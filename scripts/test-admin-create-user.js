@@ -20,7 +20,7 @@ async function testAdminCreateUser() {
         },
         body: JSON.stringify({
           username: 'admin',
-          password: 'admin123'
+          password: 'admin'
         })
       });
       
@@ -43,7 +43,7 @@ async function testAdminCreateUser() {
       },
       body: JSON.stringify({
         username: 'admin',
-        password: 'admin123'
+        password: 'admin'
       })
     });
 

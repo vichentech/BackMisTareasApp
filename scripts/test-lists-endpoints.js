@@ -14,15 +14,15 @@ async function testListsEndpoints() {
     console.log('\n1. Login como admin...');
     const adminLogin = await axios.post(`${BASE_URL}/auth/login-admin`, {
       username: 'admin',
-      password: 'admin123'
+      password: 'admin'
     });
     adminToken = adminLogin.data.token;
     console.log('✓ Login admin exitoso');
 
     console.log('\n2. Login como usuario normal...');
     const userLogin = await axios.post(`${BASE_URL}/auth/login`, {
-      username: 'testuser',
-      password: 'test123'
+      username: 'Vicente',
+      password: 'Vicente'
     });
     userToken = userLogin.data.token;
     console.log('✓ Login usuario exitoso');
