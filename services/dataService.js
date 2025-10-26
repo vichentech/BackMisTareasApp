@@ -1,5 +1,5 @@
 const { MongoClient } = require('mongodb');
-const UserData = require('../models/userData');
+const UserData = require('../models/UserData');
 const User = require('../models/User');
 
 /**
