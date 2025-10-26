@@ -38,6 +38,7 @@ if (isDevelopment) {
     ? process.env.ALLOWED_ORIGINS.split(',') 
     : ['http://localhost:5173'];
 
+    
   console.log('🔒 MODO PRODUCCIÓN: CORS restringido a:', allowedOrigins);
   app.use(cors({
     origin: function(origin, callback) {
