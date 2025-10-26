@@ -212,14 +212,14 @@ class AuthService {
   }
 
   /**
-   * Obtiene la lista de todos los usuarios
+   * Obtiene la lista de todos los usuarios con username y role
    */
   async getAllUsers() {
     try {
-      const usernames = await User.getAllUsernames();
+      const users = await User.getAllUsersWithRoles();
       return {
         success: true,
-        users: usernames
+        users: users
       };
     } catch (error) {
       console.error('Error en getAllUsers:', error);

@@ -207,27 +207,26 @@ class DataService {
   }
 
   /**
-   * Obtiene la lista de todos los usuarios
+   * Obtiene la lista de todos los usuarios con username y role
    */
   async getAllUsers() {
     try {
-      console.log('[DataService] Obteniendo lista de usuarios...');
+      console.log('[DataService] Obteniendo lista de usuarios con roles...');
 
-      // Obtener todos los usernames de la base de datos de autenticación
-      const usernames = await User.getAllUsernames();
+      // Obtener todos los usuarios con username y role
+      const users = await User.getAllUsersWithRoles();
 
-      console.log(`[DataService] Usuarios encontrados: ${usernames.length}`);
+      console.log(`[DataService] Usuarios encontrados: ${users.length}`);
 
       return {
         success: true,
-        users: usernames
+        users: users
       };
     } catch (error) {
       console.error('[DataService] Error al obtener usuarios:', error);
       throw error;
     }
   }
-
 
 /**
    * Sincronización masiva de múltiples usuarios (solo admin)

@@ -126,8 +126,37 @@ class User {
     }
   }
 
+
   /**
-   * Obtiene todos los usuarios (solo usernames)
+   * Obtiene todos los usuarios con username y role
+   */
+  async getAllUsersWithRoles() {
+    let client;
+    try {
+      const result = await this.getCollection();
+      client = result.client;
+      const collection = result.collection;
+
+      const users = await collection
+        .find({}, { projection: { username: 1, role: 1, _id: 0 } })
+        .sort({ username: 1 })
+        .toArray();
+
+      return users.map(user => ({
+        username: user.username,
+        role: user.role || 'user'
+      }));
+    } catch (error) {
+      console.error('Error al obtener usuarios con roles:', error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
+
+  /**
+   * Obtiene todos los usuarios (solo usernames) - DEPRECATED
+   * Mantener por compatibilidad
    */
   async getAllUsernames() {
     let client;
@@ -148,6 +177,7 @@ class User {
       if (client) await client.close();
     }
   }
+
 
   /**
    * Actualiza la contraseña de un usuario
