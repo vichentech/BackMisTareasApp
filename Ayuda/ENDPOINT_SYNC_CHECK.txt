@@ -1,0 +1,114 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    ENDPOINT SYNC-CHECK - BackendMisPartes
+═══════════════════════════════════════════════════════════════════════════════
+
+23. GET /data/sync-check/:username
+───────────────────────────────────────────────────────────────────────────────
+Descripción: Obtener resumen de sincronización para modo offline
+Autenticación: JWT requerido
+Método: GET
+
+URL Parameters:
+  - username: Nombre de usuario
+
+Query Parameters (opcionales):
+  - db: Nombre de la base de datos
+  - collection: Nombre de la colección
+
+Headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Permisos:
+  - Un usuario puede acceder solo a sus propios datos
+  - Un administrador puede acceder a los datos de cualquier usuario
+
+Ejemplo de URL:
+  GET /data/sync-check/usuario?db=miBaseDatos&collection=miColeccion
+
+Respuesta exitosa (200):
+{
+  "success": true,
+  "timestamps": {
+    "2023-10": "2023-10-28T10:00:00.000Z",
+    "2023-11": "2023-11-15T18:30:00.000Z"
+  },
+  "lockedDays": [
+    "2023-10-15",
+    "2023-11-01"
+  ]
+}
+
+Campos de respuesta:
+  - success: Indica si la operación fue exitosa
+  - timestamps: Objeto con timestamps por mes (formato YYYY-MM)
+  - lockedDays: Array de fechas bloqueadas por admin (formato YYYY-MM-DD)
+
+Respuesta de error (404):
+{
+  "success": false,
+  "message": "User not found."
+}
+
+Respuesta de error (403):
+{
+  "success": false,
+  "message": "No tienes permiso para acceder a los datos de este usuario"
+}
+
+Respuesta de error (500):
+{
+  "success": false,
+  "message": "An internal error occurred."
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+                            DETALLES TÉCNICOS
+═══════════════════════════════════════════════════════════════════════════════
+
+Lógica del Endpoint:
+
+1. Autenticación y Autorización:
+   - Verifica que el usuario esté autenticado mediante Bearer Token
+   - Valida que el usuario tenga permiso para acceder a los datos:
+     * Un usuario solo puede acceder a sus propios datos
+     * Un administrador puede acceder a los datos de cualquier usuario
+
+2. Obtención de Timestamps:
+   - Reutiliza la lógica del endpoint GET /data/timestamps/:username
+   - Retorna un objeto con los meses en formato YYYY-MM como claves
+   - Los valores son las fechas de última modificación (updatedAt) en formato ISO String
+
+3. Obtención de Días Bloqueados:
+   - Consulta la colección de datos del usuario
+   - Filtra documentos donde el campo "al" (admin locked) sea true
+   - Retorna un array de strings con las fechas en formato YYYY-MM-DD
+   - Los días bloqueados están ordenados alfabéticamente
+
+Estructura de Datos:
+
+monthData.days[] contiene objetos con la siguiente estructura:
+{
+  "d": "2023-10-15",  // Fecha del día en formato YYYY-MM-DD
+  "al": true,         // Admin locked - indica si el día está bloqueado
+  ...                 // Otros campos del día
+}
+
+El endpoint busca todos los días donde al === true y extrae el campo "d"
+para construir el array de lockedDays.
+
+Casos de Uso:
+
+Este endpoint está diseñado para facilitar la sincronización de datos
+en aplicaciones que trabajan en modo offline:
+
+1. Al iniciar la aplicación, el cliente puede llamar a este endpoint
+   para obtener un resumen rápido del estado del servidor
+
+2. Comparar los timestamps locales con los del servidor para determinar
+   qué meses necesitan ser sincronizados
+
+3. Obtener la lista de días bloqueados para prevenir ediciones no permitidas
+   en el cliente antes de intentar sincronizar
+
+4. Reducir el tráfico de red al obtener solo la información necesaria
+   para determinar el estado de sincronización, sin descargar datos completos

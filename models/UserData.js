@@ -276,6 +276,52 @@ class UserData {
       if (client) await client.close();
     }
   }
+
+  async getLockedDays(username, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Buscando días bloqueados para: ${username}`);
+      console.log(`[UserData] Base de datos: ${dbName}`);
+      console.log(`[UserData] Colección: ${collectionName}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      const documents = await collection
+        .find(
+          { username: username },
+          { projection: { yearMonth: 1, monthData: 1, _id: 0 } }
+        )
+        .toArray();
+
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
+      const lockedDays = [];
+
+      documents.forEach(doc => {
+        if (doc.monthData && doc.monthData.days && Array.isArray(doc.monthData.days)) {
+          doc.monthData.days.forEach(day => {
+            if (day.al === true && day.d) {
+              lockedDays.push(day.d);
+            }
+          });
+        }
+      });
+
+      console.log(`[UserData] Días bloqueados encontrados: ${lockedDays.length}`);
+
+      return {
+        success: true,
+        lockedDays: lockedDays.sort()
+      };
+    } catch (error) {
+      console.error('[UserData] Error al obtener días bloqueados:', error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
 }
 
 module.exports = new UserData();

@@ -8,7 +8,7 @@ class DataController {
   /**
    * GET /data/timestamps/:username
    * Obtener timestamps de todos los meses de un usuario
-   * 
+   *
    * Query params opcionales:
    * - db: Nombre de la base de datos
    * - collection: Nombre de la colección
@@ -50,7 +50,7 @@ class DataController {
   /**
    * POST /data/months/:username
    * Obtener datos completos de meses específicos de un usuario
-   * 
+   *
    * Body: { "months": ["2024-05", "2024-06"] }
    */
   async getMonthsData(req, res, next) {
@@ -99,7 +99,7 @@ class DataController {
   /**
    * PUT /data/months/:username
    * Actualizar datos completos de meses específicos de un usuario
-   * 
+   *
    * Body: { "data": [{ username, yearMonth, updatedAt, monthData }] }
    */
   async updateMonthsData(req, res, next) {
@@ -180,8 +180,8 @@ class DataController {
   /**
    * POST /admin/users/sync
    * Sincronización masiva de múltiples usuarios (solo admin)
-   * 
-   * Body: { 
+   *
+   * Body: {
    *   "syncRequests": [
    *     {
    *       "username": "Vicente",
@@ -243,6 +243,48 @@ class DataController {
       });
     } catch (error) {
       console.error('[ADMIN_BULK_SYNC] Error:', error);
+      next(error);
+    }
+  }
+
+  async getSyncCheck(req, res, next) {
+    try {
+      const { username } = req.params;
+      const { db, collection } = req.query;
+
+      console.log(`\n[SYNC_CHECK] Usuario: ${username}`);
+      if (db) console.log(`[SYNC_CHECK] DB: ${db}`);
+      if (collection) console.log(`[SYNC_CHECK] Collection: ${collection}`);
+
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: 'El parámetro username es requerido'
+        });
+      }
+
+      if (req.user.role !== 'admin' && req.user.username !== username) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permiso para acceder a los datos de este usuario'
+        });
+      }
+
+      const result = await dataService.getSyncCheck(username, db, collection);
+
+      console.log(`[SYNC_CHECK] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      if (result.success) {
+        console.log(`[SYNC_CHECK] Timestamps: ${Object.keys(result.timestamps || {}).length}, Días bloqueados: ${result.lockedDays ? result.lockedDays.length : 0}\n`);
+      }
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        message: result.message,
+        timestamps: result.timestamps,
+        lockedDays: result.lockedDays
+      });
+    } catch (error) {
+      console.error('[SYNC_CHECK] Error:', error);
       next(error);
     }
   }
