@@ -1,4 +1,4 @@
-const dataService = require('../services/dataService');
+const dataService = require("../services/dataService");
 
 /**
  * Controlador de Datos de Usuario
@@ -26,23 +26,29 @@ class DataController {
       if (!username) {
         return res.status(400).json({
           success: false,
-          message: 'El parámetro username es requerido'
+          message: "El parámetro username es requerido",
         });
       }
 
       // Obtener timestamps
       const result = await dataService.getTimestamps(username, db, collection);
 
-      console.log(`[TIMESTAMPS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
-      console.log(`[TIMESTAMPS] Timestamps: ${Object.keys(result.timestamps || {}).length}\n`);
+      console.log(
+        `[TIMESTAMPS] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      console.log(
+        `[TIMESTAMPS] Timestamps: ${
+          Object.keys(result.timestamps || {}).length
+        }\n`
+      );
 
       // Responder según el resultado
       return res.status(result.statusCode || 200).json({
         success: result.success,
-        timestamps: result.timestamps || {}
+        timestamps: result.timestamps || {},
       });
     } catch (error) {
-      console.error('[TIMESTAMPS] Error:', error);
+      console.error("[TIMESTAMPS] Error:", error);
       next(error);
     }
   }
@@ -60,13 +66,17 @@ class DataController {
       const { db, collection } = req.query;
 
       console.log(`\n[GET_MONTHS] Usuario: ${username}`);
-      console.log(`[GET_MONTHS] Meses solicitados: ${months ? months.join(', ') : 'ninguno'}`);
+      console.log(
+        `[GET_MONTHS] Meses solicitados: ${
+          months ? months.join(", ") : "ninguno"
+        }`
+      );
 
       // Validar que se proporcionó el username
       if (!username) {
         return res.status(400).json({
           success: false,
-          message: 'El parámetro username es requerido'
+          message: "El parámetro username es requerido",
         });
       }
 
@@ -74,24 +84,35 @@ class DataController {
       if (!months) {
         return res.status(400).json({
           success: false,
-          message: 'El campo months es requerido en el body'
+          message: "El campo months es requerido en el body",
         });
       }
 
       // Obtener datos de meses
-      const result = await dataService.getMonthsData(username, months, db, collection);
+      const result = await dataService.getMonthsData(
+        username,
+        months,
+        db,
+        collection
+      );
 
-      console.log(`[GET_MONTHS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
-      console.log(`[GET_MONTHS] Meses obtenidos: ${result.data ? result.data.length : 0}\n`);
+      console.log(
+        `[GET_MONTHS] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      console.log(
+        `[GET_MONTHS] Meses obtenidos: ${
+          result.data ? result.data.length : 0
+        }\n`
+      );
 
       // Responder según el resultado
       return res.status(result.statusCode || 200).json({
         success: result.success,
         message: result.message,
-        data: result.data || []
+        data: result.data || [],
       });
     } catch (error) {
-      console.error('[GET_MONTHS] Error:', error);
+      console.error("[GET_MONTHS] Error:", error);
       next(error);
     }
   }
@@ -109,13 +130,15 @@ class DataController {
       const { db, collection } = req.query;
 
       console.log(`\n[UPDATE_MONTHS] Usuario: ${username}`);
-      console.log(`[UPDATE_MONTHS] Meses a actualizar: ${data ? data.length : 0}`);
+      console.log(
+        `[UPDATE_MONTHS] Meses a actualizar: ${data ? data.length : 0}`
+      );
 
       // Validar que se proporcionó el username
       if (!username) {
         return res.status(400).json({
           success: false,
-          message: 'El parámetro username es requerido'
+          message: "El parámetro username es requerido",
         });
       }
 
@@ -123,30 +146,39 @@ class DataController {
       if (!data) {
         return res.status(400).json({
           success: false,
-          message: 'El campo data es requerido en el body'
+          message: "El campo data es requerido en el body",
         });
       }
 
       // Actualizar datos de meses
-      const result = await dataService.updateMonthsData(username, data, db, collection);
+      const result = await dataService.updateMonthsData(
+        username,
+        data,
+        db,
+        collection
+      );
 
-      console.log(`[UPDATE_MONTHS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      console.log(
+        `[UPDATE_MONTHS] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
       if (result.success) {
-        console.log(`[UPDATE_MONTHS] Modificados: ${result.modified}, Insertados: ${result.inserted}`);
+        console.log(
+          `[UPDATE_MONTHS] Modificados: ${result.modified}, Insertados: ${result.inserted}`
+        );
         if (result.conflicts && result.conflicts.length > 0) {
           console.log(`[UPDATE_MONTHS] Conflictos: ${result.conflicts.length}`);
         }
       }
-      console.log('');
+      console.log("");
 
       // Responder según el resultado
       return res.status(result.statusCode || 200).json({
         success: result.success,
         message: result.message,
-        conflicts: result.conflicts || []
+        conflicts: result.conflicts || [],
       });
     } catch (error) {
-      console.error('[UPDATE_MONTHS] Error:', error);
+      console.error("[UPDATE_MONTHS] Error:", error);
       next(error);
     }
   }
@@ -157,25 +189,73 @@ class DataController {
    */
   async getUsers(req, res, next) {
     try {
-      console.log('\n[USERS] Obteniendo lista de usuarios...');
+      console.log("\n[USERS] Obteniendo lista de usuarios...");
 
       // Obtener lista de usuarios
       const result = await dataService.getAllUsers();
 
-      console.log(`[USERS] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
-      console.log(`[USERS] Total usuarios: ${result.users ? result.users.length : 0}\n`);
+      console.log(`[USERS] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`);
+      console.log(
+        `[USERS] Total usuarios: ${result.users ? result.users.length : 0}\n`
+      );
 
       // Responder con la lista de usuarios
       return res.status(200).json({
         success: true,
-        users: result.users || []
+        users: result.users || [],
       });
     } catch (error) {
-      console.error('[USERS] Error:', error);
+      console.error("[USERS] Error:", error);
       next(error);
     }
   }
 
+  async getSyncCheck(req, res, next) {
+    try {
+      const { username } = req.params;
+      const { db, collection } = req.query;
+
+      console.log(`\n[SYNC_CHECK] Usuario: ${username}`);
+      if (db) console.log(`[SYNC_CHECK] DB: ${db}`);
+      if (collection) console.log(`[SYNC_CHECK] Collection: ${collection}`);
+
+      if (!username) {
+        return res.status(400).json({
+          success: false,
+          message: "El parámetro username es requerido",
+        });
+      }
+
+      const result = await dataService.getSyncCheck(username, db, collection);
+
+      console.log(
+        `[SYNC_CHECK] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      if (result.success) {
+        console.log(
+          `[SYNC_CHECK] Timestamps: ${
+            Object.keys(result.timestamps || {}).length
+          }`
+        );
+        console.log(
+          `[SYNC_CHECK] Días bloqueados: ${
+            result.lockedDays ? result.lockedDays.length : 0
+          }`
+        );
+      }
+      console.log("");
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        timestamps: result.timestamps || {},
+        lockedDays: result.lockedDays || [],
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("[SYNC_CHECK] Error:", error);
+      next(error);
+    }
+  }
 
   /**
    * POST /admin/users/sync
@@ -199,19 +279,23 @@ class DataController {
       const { db, collection } = req.query;
 
       console.log(`\n[ADMIN_BULK_SYNC] Solicitud de sincronización masiva`);
-      console.log(`[ADMIN_BULK_SYNC] Usuarios a sincronizar: ${syncRequests ? syncRequests.length : 0}`);
+      console.log(
+        `[ADMIN_BULK_SYNC] Usuarios a sincronizar: ${
+          syncRequests ? syncRequests.length : 0
+        }`
+      );
 
       if (!syncRequests || !Array.isArray(syncRequests)) {
         return res.status(400).json({
           success: false,
-          message: 'El campo syncRequests es requerido y debe ser un array'
+          message: "El campo syncRequests es requerido y debe ser un array",
         });
       }
 
       if (syncRequests.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'El array syncRequests no puede estar vacío'
+          message: "El array syncRequests no puede estar vacío",
         });
       }
 
@@ -219,30 +303,47 @@ class DataController {
         if (!request.username) {
           return res.status(400).json({
             success: false,
-            message: 'Cada elemento de syncRequests debe tener un username'
+            message: "Cada elemento de syncRequests debe tener un username",
           });
         }
-        if (!request.localTimestamps || typeof request.localTimestamps !== 'object') {
+        if (
+          !request.localTimestamps ||
+          typeof request.localTimestamps !== "object"
+        ) {
           return res.status(400).json({
             success: false,
-            message: `El usuario ${request.username} debe tener localTimestamps como objeto`
+            message: `El usuario ${request.username} debe tener localTimestamps como objeto`,
           });
         }
       }
 
-      const result = await dataService.adminBulkSync(syncRequests, db, collection);
+      const result = await dataService.adminBulkSync(
+        syncRequests,
+        db,
+        collection
+      );
 
-      console.log(`[ADMIN_BULK_SYNC] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
-      console.log(`[ADMIN_BULK_SYNC] Usuarios procesados: ${Object.keys(result.serverTimestamps || {}).length}`);
-      console.log(`[ADMIN_BULK_SYNC] Meses actualizados: ${result.updatedData ? result.updatedData.length : 0}\n`);
+      console.log(
+        `[ADMIN_BULK_SYNC] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      console.log(
+        `[ADMIN_BULK_SYNC] Usuarios procesados: ${
+          Object.keys(result.serverTimestamps || {}).length
+        }`
+      );
+      console.log(
+        `[ADMIN_BULK_SYNC] Meses actualizados: ${
+          result.updatedData ? result.updatedData.length : 0
+        }\n`
+      );
 
       return res.status(result.statusCode || 200).json({
         success: result.success,
         serverTimestamps: result.serverTimestamps || {},
-        updatedData: result.updatedData || []
+        updatedData: result.updatedData || [],
       });
     } catch (error) {
-      console.error('[ADMIN_BULK_SYNC] Error:', error);
+      console.error("[ADMIN_BULK_SYNC] Error:", error);
       next(error);
     }
   }
@@ -259,36 +360,43 @@ class DataController {
       if (!username) {
         return res.status(400).json({
           success: false,
-          message: 'El parámetro username es requerido'
+          message: "El parámetro username es requerido",
         });
       }
 
-      if (req.user.role !== 'admin' && req.user.username !== username) {
+      if (req.user.role !== "admin" && req.user.username !== username) {
         return res.status(403).json({
           success: false,
-          message: 'No tienes permiso para acceder a los datos de este usuario'
+          message: "No tienes permiso para acceder a los datos de este usuario",
         });
       }
 
       const result = await dataService.getSyncCheck(username, db, collection);
 
-      console.log(`[SYNC_CHECK] Resultado: ${result.success ? 'SUCCESS' : 'ERROR'}`);
+      console.log(
+        `[SYNC_CHECK] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
       if (result.success) {
-        console.log(`[SYNC_CHECK] Timestamps: ${Object.keys(result.timestamps || {}).length}, Días bloqueados: ${result.lockedDays ? result.lockedDays.length : 0}\n`);
+        console.log(
+          `[SYNC_CHECK] Timestamps: ${
+            Object.keys(result.timestamps || {}).length
+          }, Días bloqueados: ${
+            result.lockedDays ? result.lockedDays.length : 0
+          }\n`
+        );
       }
 
       return res.status(result.statusCode || 200).json({
         success: result.success,
         message: result.message,
         timestamps: result.timestamps,
-        lockedDays: result.lockedDays
+        lockedDays: result.lockedDays,
       });
     } catch (error) {
-      console.error('[SYNC_CHECK] Error:', error);
+      console.error("[SYNC_CHECK] Error:", error);
       next(error);
     }
   }
-
 }
 
 module.exports = new DataController();
