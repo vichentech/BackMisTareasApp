@@ -13,4 +13,10 @@ router.get('/users', requireAuth, dataController.getUsers);
 
 router.get('/sync-check/:username', requireAuth, dataController.getSyncCheck);
 
+router.post('/sync-check', requireAuth, dataController.syncCheckPost);
+
+router.post('/sync-upload', requireAuth, dataController.syncUpload);
+
+router.post('/sync-download', requireAuth, dataController.syncDownload);
+
 module.exports = router;

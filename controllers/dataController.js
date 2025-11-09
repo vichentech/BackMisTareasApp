@@ -397,6 +397,149 @@ class DataController {
       next(error);
     }
   }
+
+  async syncCheckPost(req, res, next) {
+    try {
+      const username = req.user.username;
+      const { localTimestamps } = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[SYNC_CHECK_POST] Usuario: ${username}`);
+      console.log(
+        `[SYNC_CHECK_POST] Días locales: ${
+          localTimestamps ? Object.keys(localTimestamps).length : 0
+        }`
+      );
+
+      if (!localTimestamps || typeof localTimestamps !== "object") {
+        return res.status(400).json({
+          success: false,
+          message: "El campo localTimestamps es requerido y debe ser un objeto",
+        });
+      }
+
+      const result = await dataService.syncCheck(
+        username,
+        localTimestamps,
+        db,
+        collection
+      );
+
+      console.log(
+        `[SYNC_CHECK_POST] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      if (result.success) {
+        console.log(
+          `[SYNC_CHECK_POST] Para subir: ${result.daysToUpload.length}, para descargar: ${result.daysToDownload.length}, conflictos: ${result.lockedConflicts.length}`
+        );
+      }
+      console.log("");
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        daysToUpload: result.daysToUpload || [],
+        daysToDownload: result.daysToDownload || [],
+        lockedConflicts: result.lockedConflicts || [],
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("[SYNC_CHECK_POST] Error:", error);
+      next(error);
+    }
+  }
+
+  async syncUpload(req, res, next) {
+    try {
+      const username = req.user.username;
+      const daysData = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[SYNC_UPLOAD] Usuario: ${username}`);
+      console.log(
+        `[SYNC_UPLOAD] Días a subir: ${
+          Array.isArray(daysData) ? daysData.length : 0
+        }`
+      );
+
+      if (!Array.isArray(daysData)) {
+        return res.status(400).json({
+          success: false,
+          message: "El body debe ser un array de días",
+        });
+      }
+
+      const result = await dataService.syncUpload(
+        username,
+        daysData,
+        db,
+        collection
+      );
+
+      console.log(
+        `[SYNC_UPLOAD] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      if (result.success) {
+        console.log(
+          `[SYNC_UPLOAD] Subidos: ${result.uploaded}, omitidos: ${result.skipped}`
+        );
+      }
+      console.log("");
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        message: result.message,
+        uploaded: result.uploaded,
+        skipped: result.skipped,
+      });
+    } catch (error) {
+      console.error("[SYNC_UPLOAD] Error:", error);
+      next(error);
+    }
+  }
+
+  async syncDownload(req, res, next) {
+    try {
+      const username = req.user.username;
+      const { dates } = req.body;
+      const { db, collection } = req.query;
+
+      console.log(`\n[SYNC_DOWNLOAD] Usuario: ${username}`);
+      console.log(
+        `[SYNC_DOWNLOAD] Fechas solicitadas: ${dates ? dates.length : 0}`
+      );
+
+      if (!dates || !Array.isArray(dates)) {
+        return res.status(400).json({
+          success: false,
+          message: "El campo dates es requerido y debe ser un array",
+        });
+      }
+
+      const result = await dataService.syncDownload(
+        username,
+        dates,
+        db,
+        collection
+      );
+
+      console.log(
+        `[SYNC_DOWNLOAD] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+      );
+      if (result.success) {
+        console.log(`[SYNC_DOWNLOAD] Días descargados: ${result.data.length}`);
+      }
+      console.log("");
+
+      return res.status(result.statusCode || 200).json({
+        success: result.success,
+        data: result.data || [],
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("[SYNC_DOWNLOAD] Error:", error);
+      next(error);
+    }
+  }
 }
 
 module.exports = new DataController();

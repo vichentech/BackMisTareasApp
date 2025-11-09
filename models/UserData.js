@@ -1,4 +1,4 @@
-const { MongoClient } = require('mongodb');
+const { MongoClient } = require("mongodb");
 
 /**
  * Modelo de Datos de Usuario para MongoDB
@@ -26,10 +26,17 @@ class UserData {
       url.password = encodeURIComponent(password);
       return url.toString();
     } catch (error) {
-      const protocol = this.connectionString.startsWith('mongodb+srv://') ? 'mongodb+srv://' : 'mongodb://';
-      const withoutProtocol = this.connectionString.replace(/^mongodb(\+srv)?:\/\//, '');
-      const withoutCredentials = withoutProtocol.replace(/^[^@]*@/, '');
-      return `${protocol}${encodeURIComponent(username)}:${encodeURIComponent(password)}@${withoutCredentials}`;
+      const protocol = this.connectionString.startsWith("mongodb+srv://")
+        ? "mongodb+srv://"
+        : "mongodb://";
+      const withoutProtocol = this.connectionString.replace(
+        /^mongodb(\+srv)?:\/\//,
+        ""
+      );
+      const withoutCredentials = withoutProtocol.replace(/^[^@]*@/, "");
+      return `${protocol}${encodeURIComponent(username)}:${encodeURIComponent(
+        password
+      )}@${withoutCredentials}`;
     }
   }
 
@@ -87,21 +94,23 @@ class UserData {
 
       // Construir el objeto de timestamps
       const timestamps = {};
-      documents.forEach(doc => {
+      documents.forEach((doc) => {
         if (doc.yearMonth && doc.updatedAt) {
           timestamps[doc.yearMonth] = doc.updatedAt;
         }
       });
 
-      console.log(`[UserData] Timestamps construidos: ${Object.keys(timestamps).length}`);
+      console.log(
+        `[UserData] Timestamps construidos: ${Object.keys(timestamps).length}`
+      );
 
       return {
         success: true,
         found: documents.length > 0,
-        timestamps
+        timestamps,
       };
     } catch (error) {
-      console.error('[UserData] Error al obtener timestamps:', error);
+      console.error("[UserData] Error al obtener timestamps:", error);
       throw error;
     } finally {
       if (client) await client.close();
@@ -120,7 +129,7 @@ class UserData {
     let client;
     try {
       console.log(`[UserData] Obteniendo datos de meses para: ${username}`);
-      console.log(`[UserData] Meses solicitados: ${months.join(', ')}`);
+      console.log(`[UserData] Meses solicitados: ${months.join(", ")}`);
 
       const result = await this.getCollection(dbName, collectionName);
       client = result.client;
@@ -130,26 +139,26 @@ class UserData {
       const documents = await collection
         .find({
           username: username,
-          yearMonth: { $in: months }
+          yearMonth: { $in: months },
         })
         .toArray();
 
       console.log(`[UserData] Documentos encontrados: ${documents.length}`);
 
       // Transformar los documentos al formato esperado
-      const data = documents.map(doc => ({
+      const data = documents.map((doc) => ({
         username: doc.username,
         yearMonth: doc.yearMonth,
         updatedAt: doc.updatedAt,
-        monthData: doc.monthData || {}
+        monthData: doc.monthData || {},
       }));
 
       return {
         success: true,
-        data
+        data,
       };
     } catch (error) {
-      console.error('[UserData] Error al obtener datos de meses:', error);
+      console.error("[UserData] Error al obtener datos de meses:", error);
       throw error;
     } finally {
       if (client) await client.close();
@@ -182,7 +191,7 @@ class UserData {
         if (monthData.username !== username) {
           conflicts.push({
             yearMonth: monthData.yearMonth,
-            reason: 'Username no coincide'
+            reason: "Username no coincide",
           });
           continue;
         }
@@ -190,7 +199,7 @@ class UserData {
         // Verificar si existe el documento
         const existing = await collection.findOne({
           username: username,
-          yearMonth: monthData.yearMonth
+          yearMonth: monthData.yearMonth,
         });
 
         // Si existe, verificar conflictos de versión
@@ -202,9 +211,9 @@ class UserData {
           if (existingDate > newDate) {
             conflicts.push({
               yearMonth: monthData.yearMonth,
-              reason: 'Versión del servidor más reciente',
+              reason: "Versión del servidor más reciente",
               serverUpdatedAt: existing.updatedAt,
-              clientUpdatedAt: monthData.updatedAt
+              clientUpdatedAt: monthData.updatedAt,
             });
             continue;
           }
@@ -215,18 +224,18 @@ class UserData {
           updateOne: {
             filter: {
               username: username,
-              yearMonth: monthData.yearMonth
+              yearMonth: monthData.yearMonth,
             },
             update: {
               $set: {
                 username: username,
                 yearMonth: monthData.yearMonth,
                 updatedAt: monthData.updatedAt,
-                monthData: monthData.monthData
-              }
+                monthData: monthData.monthData,
+              },
             },
-            upsert: true
-          }
+            upsert: true,
+          },
         });
       }
 
@@ -243,10 +252,10 @@ class UserData {
         success: true,
         modified: writeResult ? writeResult.modifiedCount : 0,
         inserted: writeResult ? writeResult.upsertedCount : 0,
-        conflicts: conflicts
+        conflicts: conflicts,
       };
     } catch (error) {
-      console.error('[UserData] Error al actualizar datos de meses:', error);
+      console.error("[UserData] Error al actualizar datos de meses:", error);
       throw error;
     } finally {
       if (client) await client.close();
@@ -267,63 +276,284 @@ class UserData {
       client = result.client;
       const collection = result.collection;
 
-      const count = await collection.countDocuments({ username: username }, { limit: 1 });
+      const count = await collection.countDocuments(
+        { username: username },
+        { limit: 1 }
+      );
       return count > 0;
     } catch (error) {
-      console.error('[UserData] Error al verificar usuario:', error);
+      console.error("[UserData] Error al verificar usuario:", error);
       throw error;
     } finally {
       if (client) await client.close();
     }
   }
 
-async getLockedDays(username, dbName, collectionName) {
-  let client;
-  try {
-    console.log(`[UserData] Buscando días bloqueados para: ${username}`);
-    console.log(`[UserData] Base de datos: ${dbName}`);
-    console.log(`[UserData] Colección: ${collectionName}`);
+  async getLockedDays(username, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Buscando días bloqueados para: ${username}`);
+      console.log(`[UserData] Base de datos: ${dbName}`);
+      console.log(`[UserData] Colección: ${collectionName}`);
 
-    const result = await this.getCollection(dbName, collectionName);
-    client = result.client;
-    const collection = result.collection;
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
 
-    const documents = await collection
-      .find(
-        { username: username },
-        { projection: { yearMonth: 1, monthData: 1, _id: 0 } }
-      )
-      .toArray();
+      const documents = await collection
+        .find(
+          { username: username },
+          { projection: { yearMonth: 1, monthData: 1, _id: 0 } }
+        )
+        .toArray();
 
-    console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
 
-    const lockedDays = [];
+      const lockedDays = [];
 
-    documents.forEach(doc => {
-      if (doc.monthData && doc.monthData.days && Array.isArray(doc.monthData.days)) {
-        doc.monthData.days.forEach(day => {
-          if ((day.al === true || day.ma === true) && day.d) {
-            lockedDays.push(day.d);
-          }
-        });
-      }
-    });
+      documents.forEach((doc) => {
+        if (
+          doc.monthData &&
+          doc.monthData.days &&
+          Array.isArray(doc.monthData.days)
+        ) {
+          doc.monthData.days.forEach((day) => {
+            if ((day.al === true || day.ma === true) && day.d) {
+              lockedDays.push(day.d);
+            }
+          });
+        }
+      });
 
-    console.log(`[UserData] Días bloqueados encontrados: ${lockedDays.length}`);
+      console.log(
+        `[UserData] Días bloqueados encontrados: ${lockedDays.length}`
+      );
 
-    return {
-      success: true,
-      lockedDays: lockedDays.sort()
-    };
-  } catch (error) {
-    console.error('[UserData] Error al obtener días bloqueados:', error);
-    throw error;
-  } finally {
-    if (client) await client.close();
+      return {
+        success: true,
+        lockedDays: lockedDays.sort(),
+      };
+    } catch (error) {
+      console.error("[UserData] Error al obtener días bloqueados:", error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
   }
-}
 
+  async getDayTimestamps(username, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Obteniendo timestamps de días para: ${username}`);
+      console.log(`[UserData] Base de datos: ${dbName}`);
+      console.log(`[UserData] Colección: ${collectionName}`);
 
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      const documents = await collection
+        .find({ username: username }, { projection: { monthData: 1, _id: 0 } })
+        .toArray();
+
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
+      const dayTimestamps = {};
+
+      documents.forEach((doc) => {
+        if (
+          doc.monthData &&
+          doc.monthData.days &&
+          Array.isArray(doc.monthData.days)
+        ) {
+          doc.monthData.days.forEach((day) => {
+            if (day.d && day.ts) {
+              dayTimestamps[day.d] = {
+                ts: day.ts,
+                isLocked: day.al === true || day.ma === true,
+              };
+            }
+          });
+        }
+      });
+
+      console.log(
+        `[UserData] Días con timestamp encontrados: ${
+          Object.keys(dayTimestamps).length
+        }`
+      );
+
+      return {
+        success: true,
+        dayTimestamps,
+      };
+    } catch (error) {
+      console.error("[UserData] Error al obtener timestamps de días:", error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
+
+  async uploadDays(username, daysData, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Subiendo días para: ${username}`);
+      console.log(`[UserData] Días a subir: ${daysData.length}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      let uploaded = 0;
+      let skipped = 0;
+
+      for (const dayData of daysData) {
+        if (!dayData.d) {
+          console.log(`[UserData] Día sin fecha, omitiendo`);
+          skipped++;
+          continue;
+        }
+
+        const yearMonth = dayData.d.substring(0, 7);
+
+        dayData.ts = Date.now();
+
+        const updateResult = await collection.updateOne(
+          {
+            username: username,
+            yearMonth: yearMonth,
+            "monthData.days.d": dayData.d,
+            "monthData.days.al": { $ne: true },
+            "monthData.days.ma": { $ne: true },
+          },
+          {
+            $set: {
+              "monthData.days.$": dayData,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        if (updateResult.matchedCount === 0) {
+          const doc = await collection.findOne({
+            username: username,
+            yearMonth: yearMonth,
+          });
+
+          if (!doc) {
+            await collection.insertOne({
+              username: username,
+              yearMonth: yearMonth,
+              monthData: { days: [dayData] },
+              updatedAt: new Date(),
+            });
+            uploaded++;
+          } else {
+            const dayExists = doc.monthData?.days?.some(
+              (d) => d.d === dayData.d
+            );
+
+            if (dayExists) {
+              const isLocked = doc.monthData.days.find(
+                (d) => d.d === dayData.d && (d.al === true || d.ma === true)
+              );
+              if (isLocked) {
+                console.log(
+                  `[UserData] Día ${dayData.d} está bloqueado, omitiendo`
+                );
+                skipped++;
+                continue;
+              }
+            }
+
+            await collection.updateOne(
+              {
+                username: username,
+                yearMonth: yearMonth,
+              },
+              {
+                $push: { "monthData.days": dayData },
+                $set: { updatedAt: new Date() },
+              }
+            );
+            uploaded++;
+          }
+        } else {
+          uploaded++;
+        }
+      }
+
+      console.log(`[UserData] Días subidos: ${uploaded}, omitidos: ${skipped}`);
+
+      return {
+        success: true,
+        uploaded,
+        skipped,
+      };
+    } catch (error) {
+      console.error("[UserData] Error al subir días:", error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
+
+  async downloadDays(username, dates, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Descargando días para: ${username}`);
+      console.log(`[UserData] Fechas solicitadas: ${dates.length}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      const yearMonths = [
+        ...new Set(dates.map((date) => date.substring(0, 7))),
+      ];
+
+      const documents = await collection
+        .find(
+          {
+            username: username,
+            yearMonth: { $in: yearMonths },
+          },
+          { projection: { monthData: 1, _id: 0 } }
+        )
+        .toArray();
+
+      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
+      const daysData = [];
+
+      documents.forEach((doc) => {
+        if (
+          doc.monthData &&
+          doc.monthData.days &&
+          Array.isArray(doc.monthData.days)
+        ) {
+          doc.monthData.days.forEach((day) => {
+            if (day.d && dates.includes(day.d)) {
+              daysData.push(day);
+            }
+          });
+        }
+      });
+
+      console.log(`[UserData] Días encontrados: ${daysData.length}`);
+
+      return {
+        success: true,
+        data: daysData,
+      };
+    } catch (error) {
+      console.error("[UserData] Error al descargar días:", error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
 }
 
 module.exports = new UserData();

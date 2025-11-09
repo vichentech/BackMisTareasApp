@@ -448,6 +448,186 @@ class DataService {
       };
     }
   }
+
+  async syncCheck(
+    username,
+    localTimestamps,
+    dbName = null,
+    collectionName = null
+  ) {
+    try {
+      const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
+      const targetCollection =
+        collectionName || process.env.MONGO_COLLECTION_NAME || "monthlyData";
+
+      console.log(`[DataService] Sync check para usuario: ${username}`);
+      console.log(
+        `[DataService] Días locales: ${Object.keys(localTimestamps).length}`
+      );
+
+      const serverResult = await UserData.getDayTimestamps(
+        username,
+        targetDb,
+        targetCollection
+      );
+
+      if (!serverResult.success) {
+        return {
+          success: false,
+          message: "Error al obtener timestamps del servidor",
+          statusCode: 500,
+        };
+      }
+
+      const serverTimestamps = serverResult.dayTimestamps;
+      const daysToUpload = [];
+      const daysToDownload = [];
+      const lockedConflicts = [];
+
+      for (const [serverDay, serverInfo] of Object.entries(serverTimestamps)) {
+        if (!localTimestamps[serverDay]) {
+          daysToDownload.push(serverDay);
+        } else if (serverInfo.ts > localTimestamps[serverDay]) {
+          daysToDownload.push(serverDay);
+        }
+      }
+
+      for (const [localDay, localTs] of Object.entries(localTimestamps)) {
+        if (!serverTimestamps[localDay]) {
+          daysToUpload.push(localDay);
+        } else if (localTs > serverTimestamps[localDay].ts) {
+          if (serverTimestamps[localDay].isLocked) {
+            lockedConflicts.push(localDay);
+          } else {
+            daysToUpload.push(localDay);
+          }
+        }
+      }
+
+      console.log(
+        `[DataService] Para subir: ${daysToUpload.length}, para descargar: ${daysToDownload.length}, conflictos: ${lockedConflicts.length}`
+      );
+
+      return {
+        success: true,
+        daysToUpload,
+        daysToDownload,
+        lockedConflicts,
+        statusCode: 200,
+      };
+    } catch (error) {
+      console.error("[DataService] Error en syncCheck:", error);
+      return {
+        success: false,
+        message: "Error al realizar sync check: " + error.message,
+        statusCode: 500,
+      };
+    }
+  }
+
+  async syncUpload(username, daysData, dbName = null, collectionName = null) {
+    try {
+      const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
+      const targetCollection =
+        collectionName || process.env.MONGO_COLLECTION_NAME || "monthlyData";
+
+      console.log(`[DataService] Sync upload para usuario: ${username}`);
+      console.log(`[DataService] Días a subir: ${daysData.length}`);
+
+      if (!Array.isArray(daysData) || daysData.length === 0) {
+        return {
+          success: false,
+          message: "El array de días es requerido y no puede estar vacío",
+          statusCode: 400,
+        };
+      }
+
+      const result = await UserData.uploadDays(
+        username,
+        daysData,
+        targetDb,
+        targetCollection
+      );
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: "Error al subir datos",
+          statusCode: 500,
+        };
+      }
+
+      console.log(
+        `[DataService] Subida completada: ${result.uploaded} días subidos, ${result.skipped} omitidos`
+      );
+
+      return {
+        success: true,
+        message: "Datos subidos correctamente",
+        uploaded: result.uploaded,
+        skipped: result.skipped,
+        statusCode: 200,
+      };
+    } catch (error) {
+      console.error("[DataService] Error en syncUpload:", error);
+      return {
+        success: false,
+        message: "Error al subir datos: " + error.message,
+        statusCode: 500,
+      };
+    }
+  }
+
+  async syncDownload(username, dates, dbName = null, collectionName = null) {
+    try {
+      const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
+      const targetCollection =
+        collectionName || process.env.MONGO_COLLECTION_NAME || "monthlyData";
+
+      console.log(`[DataService] Sync download para usuario: ${username}`);
+      console.log(`[DataService] Fechas solicitadas: ${dates.length}`);
+
+      if (!Array.isArray(dates) || dates.length === 0) {
+        return {
+          success: false,
+          message: "El array de fechas es requerido y no puede estar vacío",
+          statusCode: 400,
+        };
+      }
+
+      const result = await UserData.downloadDays(
+        username,
+        dates,
+        targetDb,
+        targetCollection
+      );
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: "Error al descargar datos",
+          statusCode: 500,
+        };
+      }
+
+      console.log(
+        `[DataService] Descarga completada: ${result.data.length} días descargados`
+      );
+
+      return {
+        success: true,
+        data: result.data,
+        statusCode: 200,
+      };
+    } catch (error) {
+      console.error("[DataService] Error en syncDownload:", error);
+      return {
+        success: false,
+        message: "Error al descargar datos: " + error.message,
+        statusCode: 500,
+      };
+    }
+  }
 }
 
 module.exports = new DataService();
