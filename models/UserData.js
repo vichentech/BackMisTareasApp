@@ -341,219 +341,180 @@ class UserData {
     }
   }
 
-  async getDayTimestamps(username, dbName, collectionName) {
-    let client;
-    try {
-      console.log(`[UserData] Obteniendo timestamps de días para: ${username}`);
-      console.log(`[UserData] Base de datos: ${dbName}`);
-      console.log(`[UserData] Colección: ${collectionName}`);
+async getDayTimestamps(username, dbName, collectionName) {
+  let client;
+  try {
+    console.log(`[UserData] Obteniendo timestamps de días para: ${username}`);
+    console.log(`[UserData] Base de datos: ${dbName}`);
+    console.log(`[UserData] Colección: ${collectionName}`);
 
-      const result = await this.getCollection(dbName, collectionName);
-      client = result.client;
-      const collection = result.collection;
+    const result = await this.getCollection(dbName, collectionName);
+    client = result.client;
+    const collection = result.collection;
 
-      const documents = await collection
-        .find({ username: username }, { projection: { monthData: 1, _id: 0 } })
-        .toArray();
+    const documents = await collection
+      .find({ username: username }, { projection: { monthData: 1, yearMonth: 1, _id: 0 } })
+      .toArray();
 
-      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+    console.log(`[UserData] Documentos encontrados: ${documents.length}`);
 
-      const dayTimestamps = {};
+    const dayTimestamps = {};
 
-      documents.forEach((doc) => {
-        if (
-          doc.monthData &&
-          doc.monthData.days &&
-          Array.isArray(doc.monthData.days)
-        ) {
-          doc.monthData.days.forEach((day) => {
-            if (day.d && day.ts) {
-              dayTimestamps[day.d] = {
-                ts: day.ts,
-                isLocked: day.al === true || day.ma === true,
-              };
-            }
-          });
-        }
+    documents.forEach((doc) => {
+      if (doc.monthData && typeof doc.monthData === 'object') {
+        Object.entries(doc.monthData).forEach(([dayOfMonth, dayData]) => {
+          if (dayData && dayData.d && dayData.ts) {
+            dayTimestamps[dayData.d] = {
+              ts: dayData.ts,
+              isLocked: dayData.al === true || dayData.ma === true,
+            };
+          }
+        });
+      }
+    });
+
+    console.log(
+      `[UserData] Días con timestamp encontrados: ${
+        Object.keys(dayTimestamps).length
+      }`
+    );
+
+    return {
+      success: true,
+      dayTimestamps,
+    };
+  } catch (error) {
+    console.error("[UserData] Error al obtener timestamps de días:", error);
+    throw error;
+  } finally {
+    if (client) await client.close();
+  }
+}
+
+
+
+async uploadDays(username, daysData, dbName, collectionName) {
+  let client;
+  try {
+    console.log(`[UserData] Subiendo días para: ${username}`);
+    console.log(`[UserData] Días a subir: ${daysData.length}`);
+
+    const result = await this.getCollection(dbName, collectionName);
+    client = result.client;
+    const collection = result.collection;
+
+    let uploaded = 0;
+    let skipped = 0;
+
+    for (const dayData of daysData) {
+      if (!dayData.d || !dayData.ts) {
+        console.log(`[UserData] Día sin fecha o timestamp, omitiendo`);
+        skipped++;
+        continue;
+      }
+
+      const yearMonth = dayData.d.substring(0, 7);
+      const dayOfMonth = dayData.d.substring(8, 10);
+
+      const existingDoc = await collection.findOne({
+        username: username,
+        yearMonth: yearMonth,
       });
 
-      console.log(
-        `[UserData] Días con timestamp encontrados: ${
-          Object.keys(dayTimestamps).length
-        }`
-      );
-
-      return {
-        success: true,
-        dayTimestamps,
-      };
-    } catch (error) {
-      console.error("[UserData] Error al obtener timestamps de días:", error);
-      throw error;
-    } finally {
-      if (client) await client.close();
-    }
-  }
-
-  async uploadDays(username, daysData, dbName, collectionName) {
-    let client;
-    try {
-      console.log(`[UserData] Subiendo días para: ${username}`);
-      console.log(`[UserData] Días a subir: ${daysData.length}`);
-
-      const result = await this.getCollection(dbName, collectionName);
-      client = result.client;
-      const collection = result.collection;
-
-      let uploaded = 0;
-      let skipped = 0;
-
-      for (const dayData of daysData) {
-        if (!dayData.d) {
-          console.log(`[UserData] Día sin fecha, omitiendo`);
+      if (existingDoc) {
+        const existingDay = existingDoc.monthData?.[dayOfMonth];
+        
+        if (existingDay && (existingDay.al === true || existingDay.ma === true)) {
+          console.log(`[UserData] Día ${dayData.d} está bloqueado, omitiendo`);
           skipped++;
           continue;
         }
-
-        const yearMonth = dayData.d.substring(0, 7);
-
-        dayData.ts = Date.now();
-
-        const updateResult = await collection.updateOne(
-          {
-            username: username,
-            yearMonth: yearMonth,
-            "monthData.days.d": dayData.d,
-            "monthData.days.al": { $ne: true },
-            "monthData.days.ma": { $ne: true },
-          },
-          {
-            $set: {
-              "monthData.days.$": dayData,
-              updatedAt: new Date(),
-            },
-          }
-        );
-
-        if (updateResult.matchedCount === 0) {
-          const doc = await collection.findOne({
-            username: username,
-            yearMonth: yearMonth,
-          });
-
-          if (!doc) {
-            await collection.insertOne({
-              username: username,
-              yearMonth: yearMonth,
-              monthData: { days: [dayData] },
-              updatedAt: new Date(),
-            });
-            uploaded++;
-          } else {
-            const dayExists = doc.monthData?.days?.some(
-              (d) => d.d === dayData.d
-            );
-
-            if (dayExists) {
-              const isLocked = doc.monthData.days.find(
-                (d) => d.d === dayData.d && (d.al === true || d.ma === true)
-              );
-              if (isLocked) {
-                console.log(
-                  `[UserData] Día ${dayData.d} está bloqueado, omitiendo`
-                );
-                skipped++;
-                continue;
-              }
-            }
-
-            await collection.updateOne(
-              {
-                username: username,
-                yearMonth: yearMonth,
-              },
-              {
-                $push: { "monthData.days": dayData },
-                $set: { updatedAt: new Date() },
-              }
-            );
-            uploaded++;
-          }
-        } else {
-          uploaded++;
-        }
       }
 
-      console.log(`[UserData] Días subidos: ${uploaded}, omitidos: ${skipped}`);
-
-      return {
-        success: true,
-        uploaded,
-        skipped,
-      };
-    } catch (error) {
-      console.error("[UserData] Error al subir días:", error);
-      throw error;
-    } finally {
-      if (client) await client.close();
-    }
-  }
-
-  async downloadDays(username, dates, dbName, collectionName) {
-    let client;
-    try {
-      console.log(`[UserData] Descargando días para: ${username}`);
-      console.log(`[UserData] Fechas solicitadas: ${dates.length}`);
-
-      const result = await this.getCollection(dbName, collectionName);
-      client = result.client;
-      const collection = result.collection;
-
-      const yearMonths = [
-        ...new Set(dates.map((date) => date.substring(0, 7))),
-      ];
-
-      const documents = await collection
-        .find(
-          {
-            username: username,
-            yearMonth: { $in: yearMonths },
+      await collection.updateOne(
+        {
+          username: username,
+          yearMonth: yearMonth,
+        },
+        {
+          $set: {
+            [`monthData.${dayOfMonth}`]: dayData,
+            updatedAt: new Date().toISOString(),
           },
-          { projection: { monthData: 1, _id: 0 } }
-        )
-        .toArray();
-
-      console.log(`[UserData] Documentos encontrados: ${documents.length}`);
-
-      const daysData = [];
-
-      documents.forEach((doc) => {
-        if (
-          doc.monthData &&
-          doc.monthData.days &&
-          Array.isArray(doc.monthData.days)
-        ) {
-          doc.monthData.days.forEach((day) => {
-            if (day.d && dates.includes(day.d)) {
-              daysData.push(day);
-            }
-          });
-        }
-      });
-
-      console.log(`[UserData] Días encontrados: ${daysData.length}`);
-
-      return {
-        success: true,
-        data: daysData,
-      };
-    } catch (error) {
-      console.error("[UserData] Error al descargar días:", error);
-      throw error;
-    } finally {
-      if (client) await client.close();
+        },
+        { upsert: true }
+      );
+      
+      uploaded++;
     }
+
+    console.log(`[UserData] Días subidos: ${uploaded}, omitidos: ${skipped}`);
+
+    return {
+      success: true,
+      uploaded,
+      skipped,
+    };
+  } catch (error) {
+    console.error("[UserData] Error al subir días:", error);
+    throw error;
+  } finally {
+    if (client) await client.close();
   }
+}
+  
+async downloadDays(username, dates, dbName, collectionName) {
+  let client;
+  try {
+    console.log(`[UserData] Descargando días para: ${username}`);
+    console.log(`[UserData] Fechas solicitadas: ${dates.length}`);
+
+    const result = await this.getCollection(dbName, collectionName);
+    client = result.client;
+    const collection = result.collection;
+
+    const yearMonths = [
+      ...new Set(dates.map((date) => date.substring(0, 7))),
+    ];
+
+    const documents = await collection
+      .find(
+        {
+          username: username,
+          yearMonth: { $in: yearMonths },
+        },
+        { projection: { monthData: 1, yearMonth: 1, _id: 0 } }
+      )
+      .toArray();
+
+    console.log(`[UserData] Documentos encontrados: ${documents.length}`);
+
+    const daysData = [];
+
+    documents.forEach((doc) => {
+      if (doc.monthData && typeof doc.monthData === 'object') {
+        Object.entries(doc.monthData).forEach(([dayOfMonth, dayData]) => {
+          if (dayData && dayData.d && dates.includes(dayData.d)) {
+            daysData.push(dayData);
+          }
+        });
+      }
+    });
+
+    console.log(`[UserData] Días encontrados: ${daysData.length}`);
+
+    return {
+      success: true,
+      data: daysData,
+    };
+  } catch (error) {
+    console.error("[UserData] Error al descargar días:", error);
+    throw error;
+  } finally {
+    if (client) await client.close();
+  }
+}
+
 
   async deleteAllUserData(username, dbName, collectionName) {
     let client;

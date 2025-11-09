@@ -484,23 +484,23 @@ class DataService {
       const daysToDownload = [];
       const lockedConflicts = [];
 
-      for (const [serverDay, serverInfo] of Object.entries(serverTimestamps)) {
-        if (!localTimestamps[serverDay]) {
-          daysToDownload.push(serverDay);
-        } else if (serverInfo.ts > localTimestamps[serverDay]) {
-          daysToDownload.push(serverDay);
+      for (const [localDay, localTs] of Object.entries(localTimestamps)) {
+        const serverInfo = serverTimestamps[localDay];
+
+        if (!serverInfo) {
+          daysToUpload.push(localDay);
+        } else if (serverInfo.isLocked) {
+          lockedConflicts.push(localDay);
+        } else if (localTs > serverInfo.ts) {
+          daysToUpload.push(localDay);
+        } else if (serverInfo.ts > localTs) {
+          daysToDownload.push(localDay);
         }
       }
 
-      for (const [localDay, localTs] of Object.entries(localTimestamps)) {
-        if (!serverTimestamps[localDay]) {
-          daysToUpload.push(localDay);
-        } else if (localTs > serverTimestamps[localDay].ts) {
-          if (serverTimestamps[localDay].isLocked) {
-            lockedConflicts.push(localDay);
-          } else {
-            daysToUpload.push(localDay);
-          }
+      for (const [serverDay, serverInfo] of Object.entries(serverTimestamps)) {
+        if (!localTimestamps[serverDay]) {
+          daysToDownload.push(serverDay);
         }
       }
 
@@ -516,7 +516,7 @@ class DataService {
         statusCode: 200,
       };
     } catch (error) {
-      console.error("[DataService] Error en syncCheck:", error);
+      console.error("[DataService] Error al realizar sync check:", error);
       return {
         success: false,
         message: "Error al realizar sync check: " + error.message,
