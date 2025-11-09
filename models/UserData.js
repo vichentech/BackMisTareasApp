@@ -554,6 +554,35 @@ class UserData {
       if (client) await client.close();
     }
   }
+
+  async deleteAllUserData(username, dbName, collectionName) {
+    let client;
+    try {
+      console.log(`[UserData] Eliminando todos los datos para: ${username}`);
+      console.log(`[UserData] Base de datos: ${dbName}`);
+      console.log(`[UserData] Colección: ${collectionName}`);
+
+      const result = await this.getCollection(dbName, collectionName);
+      client = result.client;
+      const collection = result.collection;
+
+      const deleteResult = await collection.deleteMany({ username: username });
+
+      console.log(
+        `[UserData] Documentos eliminados: ${deleteResult.deletedCount}`
+      );
+
+      return {
+        success: true,
+        deletedCount: deleteResult.deletedCount,
+      };
+    } catch (error) {
+      console.error("[UserData] Error al eliminar datos del usuario:", error);
+      throw error;
+    } finally {
+      if (client) await client.close();
+    }
+  }
 }
 
 module.exports = new UserData();
