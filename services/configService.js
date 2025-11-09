@@ -140,29 +140,49 @@ class ConfigService {
     return errors;
   }
 
-validateCompanyHoliday(date) {
-  const errors = [];
-  
-  if (typeof date !== 'string' || date.trim().length === 0) {
-    errors.push('Cada festivo debe ser un string válido');
+  validateCompanyHoliday(holiday) {
+    const errors = [];
+
+    if (typeof holiday !== "object" || holiday === null) {
+      errors.push("Cada festivo debe ser un objeto");
+      return errors;
+    }
+
+    if (
+      !holiday.date ||
+      typeof holiday.date !== "string" ||
+      holiday.date.trim().length === 0
+    ) {
+      errors.push('Cada festivo debe tener una propiedad "date" válida');
+      return errors;
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(holiday.date)) {
+      errors.push(
+        `El festivo con fecha "${holiday.date}" debe tener formato YYYY-MM-DD`
+      );
+      return errors;
+    }
+
+    const parsedDate = new Date(holiday.date);
+    if (isNaN(parsedDate.getTime())) {
+      errors.push(
+        `El festivo con fecha "${holiday.date}" no es una fecha válida`
+      );
+    }
+
+    if (
+      !holiday.name ||
+      typeof holiday.name !== "string" ||
+      holiday.name.trim().length === 0
+    ) {
+      errors.push('Cada festivo debe tener una propiedad "name" válida');
+    }
+
     return errors;
   }
 
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(date)) {
-    errors.push(`El festivo "${date}" debe tener formato YYYY-MM-DD`);
-    return errors;
-  }
-
-  const parsedDate = new Date(date);
-  if (isNaN(parsedDate.getTime())) {
-    errors.push(`El festivo "${date}" no es una fecha válida`);
-  }
-
-  return errors;
-}
-
-  
   /**
    * Valida un array de listas maestras (solo si tiene contenido)
    * @param {Array} items - Array a validar
@@ -170,63 +190,60 @@ validateCompanyHoliday(date) {
    * @returns {Object} Resultado de validación
    */
 
-validateArray(items, type) {
-  const errors = [];
+  validateArray(items, type) {
+    const errors = [];
 
-  if (!Array.isArray(items)) {
+    if (!Array.isArray(items)) {
+      return {
+        isValid: false,
+        errors: [`El campo ${type} debe ser un array`],
+      };
+    }
+
+    if (type === "projects") {
+      items.forEach((project, index) => {
+        const projectErrors = this.validateProject(project);
+        if (projectErrors.length > 0) {
+          errors.push(`Proyecto ${index + 1}: ${projectErrors.join(", ")}`);
+        }
+      });
+    } else if (type === "mainTasks") {
+      items.forEach((task, index) => {
+        const taskErrors = this.validateMainTask(task);
+        if (taskErrors.length > 0) {
+          errors.push(`Tarea ${index + 1}: ${taskErrors.join(", ")}`);
+        }
+      });
+    } else if (type === "vehicles") {
+      items.forEach((vehicle, index) => {
+        const vehicleErrors = this.validateVehicle(vehicle);
+        if (vehicleErrors.length > 0) {
+          errors.push(`Vehículo ${index + 1}: ${vehicleErrors.join(", ")}`);
+        }
+      });
+    } else if (type === "otherWorkTypes") {
+      items.forEach((workType, index) => {
+        const workTypeErrors = this.validateOtherWorkType(workType);
+        if (workTypeErrors.length > 0) {
+          errors.push(
+            `Tipo de trabajo ${index + 1}: ${workTypeErrors.join(", ")}`
+          );
+        }
+      });
+    } else if (type === "companyHolidays") {
+      items.forEach((holiday, index) => {
+        const holidayErrors = this.validateCompanyHoliday(holiday);
+        if (holidayErrors.length > 0) {
+          errors.push(`Festivo ${index + 1}: ${holidayErrors.join(", ")}`);
+        }
+      });
+    }
+
     return {
-      isValid: false,
-      errors: [`El campo ${type} debe ser un array`],
+      isValid: errors.length === 0,
+      errors,
     };
   }
-
-  if (type === "projects") {
-    items.forEach((project, index) => {
-      const projectErrors = this.validateProject(project);
-      if (projectErrors.length > 0) {
-        errors.push(`Proyecto ${index + 1}: ${projectErrors.join(", ")}`);
-      }
-    });
-  } else if (type === "mainTasks") {
-    items.forEach((task, index) => {
-      const taskErrors = this.validateMainTask(task);
-      if (taskErrors.length > 0) {
-        errors.push(`Tarea ${index + 1}: ${taskErrors.join(", ")}`);
-      }
-    });
-  } else if (type === "vehicles") {
-    items.forEach((vehicle, index) => {
-      const vehicleErrors = this.validateVehicle(vehicle);
-      if (vehicleErrors.length > 0) {
-        errors.push(`Vehículo ${index + 1}: ${vehicleErrors.join(", ")}`);
-      }
-    });
-  } else if (type === "otherWorkTypes") {
-    items.forEach((workType, index) => {
-      const workTypeErrors = this.validateOtherWorkType(workType);
-      if (workTypeErrors.length > 0) {
-        errors.push(
-          `Tipo de trabajo ${index + 1}: ${workTypeErrors.join(", ")}`
-        );
-      }
-    });
-  } else if (type === "companyHolidays") {
-    items.forEach((date, index) => {
-      const dateErrors = this.validateCompanyHoliday(date);
-      if (dateErrors.length > 0) {
-        errors.push(`Festivo ${index + 1}: ${dateErrors.join(", ")}`);
-      }
-    });
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-}
-
-  
-
 
   /**
    * Limpia y normaliza un array (solo si tiene contenido)
@@ -237,157 +254,178 @@ cleanArray(items, type) {
     return [];
   }
 
-  const cleaned = items.filter((item) => {
-    if (type === "companyHolidays") {
-      return typeof item === "string" && item.trim().length > 0;
-    }
-    return item && typeof item === "object";
-  });
-
-  if (type === "projects") {
-    return cleaned.map((p) => ({
-      id: p.id.trim(),
-      pnr: p.pnr.trim(),
-      pnm: p.pnm.trim(),
-    }));
-  } else if (type === "mainTasks") {
-    return items.map((t) => ({
-      id: t.id.trim(),
-      name: t.name.trim(),
-    }));
-  } else if (type === "vehicles") {
-    return items.map((v) => ({
-      id: v.id.trim(),
-      name: v.name.trim(),
-    }));
-  } else if (type === "otherWorkTypes") {
-    return items.map((w) => ({
-      id: w.id.trim(),
-      name: w.name.trim(),
-    }));
-  } else if (type === "companyHolidays") {
-    return cleaned.map((date) => date.trim());
+  if (type === "companyHolidays") {
+    return items.filter((item) => {
+      return (
+        item &&
+        typeof item === "object" &&
+        item.date &&
+        typeof item.date === "string" &&
+        item.date.trim().length > 0 &&
+        item.name &&
+        typeof item.name === "string" &&
+        item.name.trim().length > 0
+      );
+    });
   }
 
-  return [];
+  return items.filter((item) => {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    if (type === "projects") {
+      return (
+        item.id &&
+        typeof item.id === "string" &&
+        item.pnr &&
+        typeof item.pnr === "string" &&
+        item.pnm &&
+        typeof item.pnm === "string"
+      );
+    }
+
+    return item.id && typeof item.id === "string" && item.name && typeof item.name === "string";
+  });
 }
-
-
-
+  
   /**
    * Obtiene las listas maestras
    */
 
-async getMasterLists() {
-  try {
-    const masterLists = await MasterList.getMasterLists();
+  async getMasterLists() {
+    try {
+      const masterLists = await MasterList.getMasterLists();
 
-    return {
-      success: true,
-      projects: masterLists.projects,
-      mainTasks: masterLists.mainTasks,
-      vehicles: masterLists.vehicles,
-      otherWorkTypes: masterLists.otherWorkTypes,
-      companyHolidays: masterLists.companyHolidays || [],
-      updatedAt: masterLists.updatedAt,
-    };
-  } catch (error) {
-    console.error("Error en getMasterLists:", error);
-    throw error;
+      return {
+        success: true,
+        projects: masterLists.projects,
+        mainTasks: masterLists.mainTasks,
+        vehicles: masterLists.vehicles,
+        otherWorkTypes: masterLists.otherWorkTypes,
+        companyHolidays: masterLists.companyHolidays || [],
+        updatedAt: masterLists.updatedAt,
+      };
+    } catch (error) {
+      console.error("Error en getMasterLists:", error);
+      throw error;
+    }
   }
-}
-
-
 
   /**
    * Actualiza las listas maestras (solo admin)
    * Soporta actualizaciones parciales - solo actualiza los arrays que tienen contenido
    */
 
-async updateMasterLists(projects, mainTasks, vehicles, otherWorkTypes, companyHolidays) {
-  try {
-    const cleanedProjects = this.cleanArray(projects, "projects");
-    const cleanedMainTasks = this.cleanArray(mainTasks, "mainTasks");
-    const cleanedVehicles = this.cleanArray(vehicles, "vehicles");
-    const cleanedOtherWorkTypes = this.cleanArray(otherWorkTypes, "otherWorkTypes");
-    const cleanedCompanyHolidays = this.cleanArray(companyHolidays, "companyHolidays");
+  async updateMasterLists(
+    projects,
+    mainTasks,
+    vehicles,
+    otherWorkTypes,
+    companyHolidays
+  ) {
+    try {
+      const cleanedProjects = this.cleanArray(projects, "projects");
+      const cleanedMainTasks = this.cleanArray(mainTasks, "mainTasks");
+      const cleanedVehicles = this.cleanArray(vehicles, "vehicles");
+      const cleanedOtherWorkTypes = this.cleanArray(
+        otherWorkTypes,
+        "otherWorkTypes"
+      );
+      const cleanedCompanyHolidays = this.cleanArray(
+        companyHolidays,
+        "companyHolidays"
+      );
 
-    const allErrors = [];
+      const allErrors = [];
 
-    const projectsValidation = this.validateArray(cleanedProjects, "projects");
-    if (!projectsValidation.isValid) {
-      allErrors.push(...projectsValidation.errors);
-    }
+      const projectsValidation = this.validateArray(
+        cleanedProjects,
+        "projects"
+      );
+      if (!projectsValidation.isValid) {
+        allErrors.push(...projectsValidation.errors);
+      }
 
-    const mainTasksValidation = this.validateArray(cleanedMainTasks, "mainTasks");
-    if (!mainTasksValidation.isValid) {
-      allErrors.push(...mainTasksValidation.errors);
-    }
+      const mainTasksValidation = this.validateArray(
+        cleanedMainTasks,
+        "mainTasks"
+      );
+      if (!mainTasksValidation.isValid) {
+        allErrors.push(...mainTasksValidation.errors);
+      }
 
-    const vehiclesValidation = this.validateArray(cleanedVehicles, "vehicles");
-    if (!vehiclesValidation.isValid) {
-      allErrors.push(...vehiclesValidation.errors);
-    }
+      const vehiclesValidation = this.validateArray(
+        cleanedVehicles,
+        "vehicles"
+      );
+      if (!vehiclesValidation.isValid) {
+        allErrors.push(...vehiclesValidation.errors);
+      }
 
-    const otherWorkTypesValidation = this.validateArray(cleanedOtherWorkTypes, "otherWorkTypes");
-    if (!otherWorkTypesValidation.isValid) {
-      allErrors.push(...otherWorkTypesValidation.errors);
-    }
+      const otherWorkTypesValidation = this.validateArray(
+        cleanedOtherWorkTypes,
+        "otherWorkTypes"
+      );
+      if (!otherWorkTypesValidation.isValid) {
+        allErrors.push(...otherWorkTypesValidation.errors);
+      }
 
-    const companyHolidaysValidation = this.validateArray(cleanedCompanyHolidays, "companyHolidays");
-    if (!companyHolidaysValidation.isValid) {
-      allErrors.push(...companyHolidaysValidation.errors);
-    }
+      const companyHolidaysValidation = this.validateArray(
+        cleanedCompanyHolidays,
+        "companyHolidays"
+      );
+      if (!companyHolidaysValidation.isValid) {
+        allErrors.push(...companyHolidaysValidation.errors);
+      }
 
-    if (allErrors.length > 0) {
+      if (allErrors.length > 0) {
+        return {
+          success: false,
+          message: allErrors.join(". "),
+          statusCode: 400,
+        };
+      }
+
+      console.log(`[ConfigService] Reemplazando listas maestras completamente`);
+      console.log(
+        `[ConfigService] Projects: ${cleanedProjects.length}, MainTasks: ${cleanedMainTasks.length}, Vehicles: ${cleanedVehicles.length}, OtherWorkTypes: ${cleanedOtherWorkTypes.length}, CompanyHolidays: ${cleanedCompanyHolidays.length}`
+      );
+
+      const result = await MasterList.updateMasterLists(
+        cleanedProjects,
+        cleanedMainTasks,
+        cleanedVehicles,
+        cleanedOtherWorkTypes,
+        cleanedCompanyHolidays
+      );
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: "No se pudieron actualizar las listas maestras",
+          statusCode: 500,
+        };
+      }
+
       return {
-        success: false,
-        message: allErrors.join(". "),
-        statusCode: 400,
+        success: true,
+        message: "Listas maestras actualizadas correctamente.",
+        statusCode: 200,
+        data: {
+          projects: result.data.projects,
+          mainTasks: result.data.mainTasks,
+          vehicles: result.data.vehicles,
+          otherWorkTypes: result.data.otherWorkTypes,
+          companyHolidays: result.data.companyHolidays,
+          updatedAt: result.data.updatedAt,
+        },
       };
+    } catch (error) {
+      console.error("Error en updateMasterLists:", error);
+      throw error;
     }
-
-    console.log(`[ConfigService] Reemplazando listas maestras completamente`);
-    console.log(
-      `[ConfigService] Projects: ${cleanedProjects.length}, MainTasks: ${cleanedMainTasks.length}, Vehicles: ${cleanedVehicles.length}, OtherWorkTypes: ${cleanedOtherWorkTypes.length}, CompanyHolidays: ${cleanedCompanyHolidays.length}`
-    );
-
-    const result = await MasterList.updateMasterLists(
-      cleanedProjects,
-      cleanedMainTasks,
-      cleanedVehicles,
-      cleanedOtherWorkTypes,
-      cleanedCompanyHolidays
-    );
-
-    if (!result.success) {
-      return {
-        success: false,
-        message: "No se pudieron actualizar las listas maestras",
-        statusCode: 500,
-      };
-    }
-
-    return {
-      success: true,
-      message: "Listas maestras actualizadas correctamente.",
-      statusCode: 200,
-      data: {
-        projects: result.data.projects,
-        mainTasks: result.data.mainTasks,
-        vehicles: result.data.vehicles,
-        otherWorkTypes: result.data.otherWorkTypes,
-        companyHolidays: result.data.companyHolidays,
-        updatedAt: result.data.updatedAt,
-      },
-    };
-  } catch (error) {
-    console.error("Error en updateMasterLists:", error);
-    throw error;
   }
-}
-  
-
 
   /**
    * Inicializa las listas maestras
