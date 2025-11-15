@@ -100,6 +100,201 @@ app.use(requestLogger);
 // RUTAS PRINCIPALES
 // ============================================
 
+// ============================================
+// RUTAS DE LA API
+// ============================================
+
+/**
+ * HEAD /api/
+ * Prueba de conexión rápida (usado por el botón "Probar Conexión")
+ */
+app.head('/api/', syncController.testConnection);
+
+/**
+ * GET /api/status
+ * Health check del servidor
+ */
+app.get('/api/status', syncController.getStatus);
+
+/**
+ * Rutas de configuración inicial (públicas)
+ * GET /api/setup/status - Verificar si se necesita configuración inicial
+ * POST /api/setup/create-admin - Crear primer administrador
+ */
+app.use('/api/setup', setupRoutes);
+
+/**
+ * Rutas de sincronización
+ * POST /api/sync/check - Comprobar actualizaciones
+ * POST /api/sync/push - Enviar actualizaciones
+ * POST /api/sync/init-indexes - Inicializar índices
+ */
+app.use('/api/sync', syncRoutes);
+
+/**
+ * Rutas de autenticación (con JWT)
+ * POST /api/auth/login - Login de usuario (devuelve JWT)
+ * POST /api/auth/login-admin - Login de administrador (devuelve JWT)
+ * POST /api/auth/refresh - Refrescar token de acceso
+ * POST /api/auth/verify - Verificar token
+ * POST /api/auth/create-user - Crear usuario
+ * POST /api/auth/change-password - Cambiar contraseña
+ * POST /api/auth/admin-change-password - Admin cambia contraseña
+ * POST /api/auth/init-db - Inicializar base de datos
+ */
+app.use('/api/auth', authRoutes);
+
+/**
+ * Rutas de configuración (con JWT)
+ * GET /api/config/master-lists - Obtener listas maestras (requiere JWT)
+ * POST /api/config/master-lists - Actualizar listas maestras (requiere JWT admin)
+ * POST /api/config/init-master-lists - Inicializar listas maestras
+ */
+app.use('/api/config', configRoutes);
+
+/**
+ * Rutas de datos (con JWT)
+ * GET /api/data/timestamps/:username - Obtener timestamps de un usuario (requiere JWT)
+ * POST /api/data/months/:username - Obtener datos de meses específicos (requiere JWT)
+ * PUT /api/data/months/:username - Actualizar datos de meses específicos (requiere JWT)
+ * GET /api/data/users - Obtener lista de usuarios (requiere JWT)
+ */
+app.use('/api/data', dataRoutes);
+
+/**
+ * Rutas de listas personales (con JWT)
+ * GET /api/data/lists/:username - Obtener listas personales de un usuario (requiere JWT)
+ * POST /api/data/lists/:username - Actualizar listas personales de un usuario (requiere JWT)
+ */
+app.use('/api/data', listsRoutes);
+
+/**
+ * Rutas de administración (con JWT admin)
+ * POST /api/admin/users - Crear nuevo usuario (requiere JWT admin)
+ * POST /api/admin/users/sync - Sincronización masiva de usuarios (requiere JWT admin)
+ */
+app.use('/api/admin', adminRoutes);
+
+ // Ruta 404
+ app.use((req, res) => {
+   res.status(404).json({
+     success: false,
+     message: 'Endpoint no encontrado',
+     availableEndpoints: [
+       'HEAD /api/',
+       'GET /api/status',
+       'GET /api/setup/status',
+       'POST /api/setup/create-admin',
+       'POST /api/sync/check',
+       'POST /api/sync/push',
+       'POST /api/sync/init-indexes',
+       'POST /api/auth/login',
+       'POST /api/auth/login-admin',
+       'POST /api/auth/refresh',
+       'POST /api/auth/verify',
+       'POST /api/auth/create-user',
+       'POST /api/auth/change-password',
+       'POST /api/auth/admin-change-password',
+       'POST /api/auth/init-db',
+       'GET /api/config/master-lists (requiere JWT)',
+       'POST /api/config/master-lists (requiere JWT admin)',
+       'POST /api/config/init-master-lists',
+       'GET /api/data/timestamps/:username (requiere JWT)',
+       'POST /api/data/months/:username (requiere JWT)',
+       'PUT /api/data/months/:username (requiere JWT)',
+       'GET /api/data/users (requiere JWT)',
+       'GET /api/data/lists/:username (requiere JWT)',
+       'POST /api/data/lists/:username (requiere JWT)',
+       'POST /api/admin/users (requiere JWT admin)',
+       'POST /api/admin/users/sync (requiere JWT admin)'
+     ]
+   });
+ });
+
+// Middleware de manejo de errores
+app.use(errorHandler);
+
+ // Inicio del servidor
+const server = app.listen(PORT, () => {
+  console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║          🚀 Servidor de Sincronización Iniciado               ║
+╠═══════════════════════════════════════════════════════════════╣
+║   Puerto: ${PORT.toString().padEnd(52)}║
+║   Entorno: ${(process.env.NODE_ENV || 'development').padEnd(51)}║
+║   CORS: ${(isDevelopment ? '⚠️  ABIERTO (Desarrollo)' : '🔒 RESTRINGIDO (Producción)').padEnd(54)}║
+║   Logging: ${(isDevelopment ? '📝 ACTIVADO' : '🔇 DESACTIVADO').padEnd(51)}║
+║   Auth: 🔐 JWT (${(process.env.JWT_EXPIRES_IN || '24h')})${' '.repeat(44 - (process.env.JWT_EXPIRES_IN || '24h').length)}║
+╠═══════════════════════════════════════════════════════════════╣
+║   📋 ENDPOINTS DISPONIBLES:                                   ║
+╠═══════════════════════════════════════════════════════════════╣
+║   🏥 Health Check:                                            ║
+║   • HEAD /api/                                                ║
+║   • GET  /api/status                                          ║
+║                                                               ║
+║   🔧 Configuración Inicial (Público):                         ║
+║   • GET  /api/setup/status                                    ║
+║   • POST /api/setup/create-admin                              ║
+║                                                               ║
+║   🔐 Autenticación:                                           ║
+║   • POST /api/auth/login                                      ║
+║   • POST /api/auth/login-admin                                ║
+║   • POST /api/auth/refresh                                    ║
+║   • POST /api/auth/verify                                     ║
+║   • POST /api/auth/create-user                                ║
+║   • POST /api/auth/change-password                            ║
+║   • POST /api/auth/admin-change-password                      ║
+║   • POST /api/auth/init-db                                    ║
+║                                                               ║
+║   📡 Sincronización:                                          ║
+║   • POST /api/sync/check                                      ║
+║   • POST /api/sync/push                                       ║
+║   • POST /api/sync/init-indexes                               ║
+║                                                               ║
+║   📊 Datos (Requiere JWT):                                    ║
+║   • GET  /api/data/timestamps/:username                       ║
+║   • POST /api/data/months/:username                           ║
+║   • PUT  /api/data/months/:username                           ║
+║   • GET  /api/data/users                                      ║
+║                                                               ║
+║   📝 Listas Personales (Requiere JWT):                        ║
+║   • GET  /api/data/lists/:username                            ║
+║   • POST /api/data/lists/:username                            ║
+║                                                               ║
+║   ⚙️  Configuración (Requiere JWT):                           ║
+║   • GET  /api/config/master-lists                             ║
+║   • POST /api/config/master-lists (Requiere Admin)            ║
+║   • POST /api/config/init-master-lists                        ║
+║                                                               ║
+║   👥 Administración (Requiere JWT Admin):                     ║
+║   • POST /api/admin/users                                     ║   
+║   • POST /api/admin/users/sync                                ║
+╚═══════════════════════════════════════════════════════════════╝
+  `);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM recibido. Cerrando servidor...');
+  server.close(() => {
+    console.log('Servidor cerrado correctamente');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('\nSIGINT recibido. Cerrando servidor...');
+  server.close(() => {
+    console.log('Servidor cerrado correctamente');
+    process.exit(0);
+  });
+});
+
+module.exports = app;
+
+
+
+------------------------------------------------------------
+
 /**
  * HEAD /
  * Prueba de conexión rápida (usado por el botón "Probar Conexión")
