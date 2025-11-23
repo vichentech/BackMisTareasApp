@@ -367,6 +367,7 @@ async getDayTimestamps(username, dbName, collectionName) {
             dayTimestamps[dayData.d] = {
               ts: dayData.ts,
               isLocked: dayData.al === true || dayData.ma === true,
+              dayData: dayData
             };
           }
         });
@@ -390,6 +391,7 @@ async getDayTimestamps(username, dbName, collectionName) {
     if (client) await client.close();
   }
 }
+
 
 
 

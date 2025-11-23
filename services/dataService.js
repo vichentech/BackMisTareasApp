@@ -449,104 +449,144 @@ class DataService {
     }
   }
 
-async syncCheck(
-  username,
-  localTimestamps,
-  dbName = null,
-  collectionName = null,
-  year = null
-) {
-  try {
-    const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
-    const targetCollection =
-      collectionName || process.env.MONGO_COLLECTION_NAME || "monthlyData";
+  async syncCheck(
+    username,
+    localTimestamps,
+    dbName = null,
+    collectionName = null,
+    year = null
+  ) {
+    try {
+      const { generateDayHash } = require("../utils/hashUtils");
 
-    console.log(`[DataService] Sync check para usuario: ${username}`);
-    console.log(
-      `[DataService] Días locales: ${Object.keys(localTimestamps).length}`
-    );
-    if (year !== null) {
-      console.log(`[DataService] Filtro de año: ${year}`);
-    }
+      const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
+      const targetCollection =
+        collectionName || process.env.MONGO_COLLECTION_NAME || "monthlyData";
 
-    const serverResult = await UserData.getDayTimestamps(
-      username,
-      targetDb,
-      targetCollection
-    );
+      console.log(`[DataService] Sync check para usuario: ${username}`);
+      console.log(
+        `[DataService] Días locales: ${Object.keys(localTimestamps).length}`
+      );
+      if (year !== null) {
+        console.log(`[DataService] Filtro de año: ${year}`);
+      }
 
-    if (!serverResult.success) {
+      const serverResult = await UserData.getDayTimestamps(
+        username,
+        targetDb,
+        targetCollection
+      );
+
+      if (!serverResult.success) {
+        return {
+          success: false,
+          message: "Error al obtener timestamps del servidor",
+          statusCode: 500,
+        };
+      }
+
+      let serverTimestamps = serverResult.dayTimestamps;
+      let filteredLocalTimestamps = localTimestamps;
+
+      if (year !== null) {
+        const yearPrefix = `${year}-`;
+
+        serverTimestamps = Object.fromEntries(
+          Object.entries(serverTimestamps).filter(([day]) =>
+            day.startsWith(yearPrefix)
+          )
+        );
+
+        filteredLocalTimestamps = Object.fromEntries(
+          Object.entries(localTimestamps).filter(([day]) =>
+            day.startsWith(yearPrefix)
+          )
+        );
+
+        console.log(
+          `[DataService] Después del filtro - Servidor: ${
+            Object.keys(serverTimestamps).length
+          }, Local: ${Object.keys(filteredLocalTimestamps).length}`
+        );
+      }
+
+      const daysToUpload = [];
+      const daysToDownload = [];
+      const lockedConflicts = [];
+      const timestampsToUpdate = [];
+
+      const allDates = new Set([
+        ...Object.keys(filteredLocalTimestamps),
+        ...Object.keys(serverTimestamps),
+      ]);
+
+      for (const date of allDates) {
+        const clientInfo = filteredLocalTimestamps[date];
+        const serverInfo = serverTimestamps[date];
+
+        if (serverInfo && clientInfo) {
+          const clientHash =
+            typeof clientInfo === "object" ? clientInfo.hash : null;
+          const clientTs =
+            typeof clientInfo === "object" ? clientInfo.ts : clientInfo;
+
+          if (clientHash && serverInfo.dayData) {
+            const serverHash = generateDayHash(serverInfo.dayData);
+
+            if (clientHash === serverHash) {
+              if (clientTs !== serverInfo.ts) {
+                timestampsToUpdate.push({
+                  date: date,
+                  ts: serverInfo.ts,
+                });
+              }
+              continue;
+            }
+          }
+
+          if (serverInfo.isLocked) {
+            if (
+              !clientHash ||
+              (clientHash &&
+                serverInfo.dayData &&
+                clientHash !== generateDayHash(serverInfo.dayData))
+            ) {
+              lockedConflicts.push(date);
+            }
+          } else if (clientTs > serverInfo.ts) {
+            daysToUpload.push(date);
+          } else if (serverInfo.ts > clientTs) {
+            daysToDownload.push(date);
+          }
+        } else if (serverInfo && !clientInfo) {
+          daysToDownload.push(date);
+        } else if (!serverInfo && clientInfo) {
+          daysToUpload.push(date);
+        }
+      }
+
+      console.log(
+        `[DataService] Para subir: ${daysToUpload.length}, para descargar: ${daysToDownload.length}, conflictos: ${lockedConflicts.length}, timestamps a actualizar: ${timestampsToUpdate.length}`
+      );
+
+      return {
+        success: true,
+        daysToUpload,
+        daysToDownload,
+        lockedConflicts,
+        timestampsToUpdate,
+        statusCode: 200,
+      };
+    } catch (error) {
+      console.error("[DataService] Error al realizar sync check:", error);
       return {
         success: false,
-        message: "Error al obtener timestamps del servidor",
+        message: "Error al realizar sync check: " + error.message,
         statusCode: 500,
       };
     }
-
-    let serverTimestamps = serverResult.dayTimestamps;
-    let filteredLocalTimestamps = localTimestamps;
-
-    if (year !== null) {
-      const yearPrefix = `${year}-`;
-      
-      serverTimestamps = Object.fromEntries(
-        Object.entries(serverTimestamps).filter(([day]) => day.startsWith(yearPrefix))
-      );
-      
-      filteredLocalTimestamps = Object.fromEntries(
-        Object.entries(localTimestamps).filter(([day]) => day.startsWith(yearPrefix))
-      );
-      
-      console.log(
-        `[DataService] Después del filtro - Servidor: ${Object.keys(serverTimestamps).length}, Local: ${Object.keys(filteredLocalTimestamps).length}`
-      );
-    }
-
-    const daysToUpload = [];
-    const daysToDownload = [];
-    const lockedConflicts = [];
-
-    for (const [localDay, localTs] of Object.entries(filteredLocalTimestamps)) {
-      const serverInfo = serverTimestamps[localDay];
-
-      if (!serverInfo) {
-        daysToUpload.push(localDay);
-      } else if (serverInfo.isLocked) {
-        lockedConflicts.push(localDay);
-      } else if (localTs > serverInfo.ts) {
-        daysToUpload.push(localDay);
-      } else if (serverInfo.ts > localTs) {
-        daysToDownload.push(localDay);
-      }
-    }
-
-    for (const [serverDay, serverInfo] of Object.entries(serverTimestamps)) {
-      if (!filteredLocalTimestamps[serverDay]) {
-        daysToDownload.push(serverDay);
-      }
-    }
-
-    console.log(
-      `[DataService] Para subir: ${daysToUpload.length}, para descargar: ${daysToDownload.length}, conflictos: ${lockedConflicts.length}`
-    );
-
-    return {
-      success: true,
-      daysToUpload,
-      daysToDownload,
-      lockedConflicts,
-      statusCode: 200,
-    };
-  } catch (error) {
-    console.error("[DataService] Error al realizar sync check:", error);
-    return {
-      success: false,
-      message: "Error al realizar sync check: " + error.message,
-      statusCode: 500,
-    };
   }
-}
-  
+
   async syncUpload(username, daysData, dbName = null, collectionName = null) {
     try {
       const targetDb = dbName || process.env.MONGO_DB_NAME || "timeTrackingDB";
