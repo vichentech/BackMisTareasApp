@@ -398,55 +398,67 @@ class DataController {
     }
   }
 
-  async syncCheckPost(req, res, next) {
-    try {
-      const username = req.user.username;
-      const { localTimestamps } = req.body;
-      const { db, collection } = req.query;
+async syncCheckPost(req, res, next) {
+  try {
+    const username = req.user.username;
+    const { localTimestamps, year } = req.body;
+    const { db, collection } = req.query;
 
-      console.log(`\n[SYNC_CHECK_POST] Usuario: ${username}`);
-      console.log(
-        `[SYNC_CHECK_POST] Días locales: ${
-          localTimestamps ? Object.keys(localTimestamps).length : 0
-        }`
-      );
-
-      if (!localTimestamps || typeof localTimestamps !== "object") {
-        return res.status(400).json({
-          success: false,
-          message: "El campo localTimestamps es requerido y debe ser un objeto",
-        });
-      }
-
-      const result = await dataService.syncCheck(
-        username,
-        localTimestamps,
-        db,
-        collection
-      );
-
-      console.log(
-        `[SYNC_CHECK_POST] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
-      );
-      if (result.success) {
-        console.log(
-          `[SYNC_CHECK_POST] Para subir: ${result.daysToUpload.length}, para descargar: ${result.daysToDownload.length}, conflictos: ${result.lockedConflicts.length}`
-        );
-      }
-      console.log("");
-
-      return res.status(result.statusCode || 200).json({
-        success: result.success,
-        daysToUpload: result.daysToUpload || [],
-        daysToDownload: result.daysToDownload || [],
-        lockedConflicts: result.lockedConflicts || [],
-        message: result.message,
-      });
-    } catch (error) {
-      console.error("[SYNC_CHECK_POST] Error:", error);
-      next(error);
+    console.log(`\n[SYNC_CHECK_POST] Usuario: ${username}`);
+    console.log(
+      `[SYNC_CHECK_POST] Días locales: ${
+        localTimestamps ? Object.keys(localTimestamps).length : 0
+      }`
+    );
+    if (year !== undefined) {
+      console.log(`[SYNC_CHECK_POST] Filtro de año: ${year}`);
     }
+
+    if (!localTimestamps || typeof localTimestamps !== "object") {
+      return res.status(400).json({
+        success: false,
+        message: "El campo localTimestamps es requerido y debe ser un objeto",
+      });
+    }
+
+    if (year !== undefined && (typeof year !== "number" || year < 1900 || year > 2100)) {
+      return res.status(400).json({
+        success: false,
+        message: "El parámetro year debe ser un número válido entre 1900 y 2100",
+      });
+    }
+
+    const result = await dataService.syncCheck(
+      username,
+      localTimestamps,
+      db,
+      collection,
+      year
+    );
+
+    console.log(
+      `[SYNC_CHECK_POST] Resultado: ${result.success ? "SUCCESS" : "ERROR"}`
+    );
+    if (result.success) {
+      console.log(
+        `[SYNC_CHECK_POST] Para subir: ${result.daysToUpload.length}, para descargar: ${result.daysToDownload.length}, conflictos: ${result.lockedConflicts.length}`
+      );
+    }
+    console.log("");
+
+    return res.status(result.statusCode || 200).json({
+      success: result.success,
+      daysToUpload: result.daysToUpload || [],
+      daysToDownload: result.daysToDownload || [],
+      lockedConflicts: result.lockedConflicts || [],
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("[SYNC_CHECK_POST] Error:", error);
+    next(error);
   }
+}
+  
 
   async syncUpload(req, res, next) {
     try {
